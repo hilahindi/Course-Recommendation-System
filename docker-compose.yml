@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  db:
+    # We are using the official PostgreSQL image version 15
+    image: postgres:15
+    container_name: course_db
+    restart: always
+    environment:
+      # Database credentials - we will use these in Python later
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: course_recommender
+    ports:
+      # Maps port 5432 inside the container to port 5432 on your machine
+      - "5432:5432"
+    volumes:
+      # Saves the database data so it isn't lost if the container stops
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

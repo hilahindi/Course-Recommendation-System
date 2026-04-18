@@ -1,52 +1,125 @@
-from database import SessionLocal, engine, Base
+import os
+from sqlalchemy.orm import Session
+from database import SessionLocal, engine
 import models
 
-# Create the database tables based on the models
-models.Base.metadata.create_all(bind=engine)
-
-def seed_data():
+def seed_db():
+    models.Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
-    # Check if data already exists to avoid duplicates
-    if db.query(models.Course).first():
-        print("Data already exists in the database. No seeding required.")
-    else:
-        print("Creating tables and inserting Afeka sample data...")
-
-        # Creating specialization tracks
-        track_web = models.Track(name="Web Development")
-        track_cyber = models.Track(name="Cyber Security")
-        track_data = models.Track(name="Data Science")
-        db.add_all([track_web, track_cyber, track_data])
-        db.commit() 
-
-        # Inserting courses
-        courses = [
-            # Core Courses
-            models.Course(course_code=1001, name="Intro to Computer Science", workload=5, mandatory_attendance=True, prerequisites="", track_id=None),
-            models.Course(course_code=1002, name="Data Structures", workload=5, mandatory_attendance=False, prerequisites="1001", track_id=None),
-            models.Course(course_code=1003, name="Algorithms", workload=4, mandatory_attendance=False, prerequisites="1002", track_id=None),
-            models.Course(course_code=1004, name="Operating Systems", workload=4, mandatory_attendance=True, prerequisites="1002", track_id=None),
-            models.Course(course_code=1005, name="Computer Networks", workload=3, mandatory_attendance=False, prerequisites="1001", track_id=None),
-            
-            # Web Track Courses
-            models.Course(course_code=2001, name="Web Application Development", workload=4, mandatory_attendance=False, prerequisites="1001", track_id=track_web.id),
-            models.Course(course_code=2002, name="Advanced React", workload=3, mandatory_attendance=False, prerequisites="2001", track_id=track_web.id),
-            
-            # Cyber Track Courses
-            models.Course(course_code=3001, name="Info Security Principles", workload=3, mandatory_attendance=True, prerequisites="1002", track_id=track_cyber.id),
-            models.Course(course_code=3002, name="Network Security", workload=4, mandatory_attendance=True, prerequisites="1005,3001", track_id=track_cyber.id),
-            
-            # Data Track Courses
-            models.Course(course_code=4001, name="Intro to Data Science", workload=3, mandatory_attendance=False, prerequisites="1002", track_id=track_data.id),
-            models.Course(course_code=4002, name="Machine Learning", workload=5, mandatory_attendance=False, prerequisites="4001", track_id=track_data.id)
-        ]
-        
-        db.add_all(courses)
-        db.commit()
-        print("Success: Database has been seeded with English data!")
+    # Create Tracks
+    tracks_data = [
+        {"id": 1, "name": "Cyber (סייבר)"},
+        {"id": 2, "name": "User Interfaces (ממשקי משתמש - Web, Android, iOS)"},
+        {"id": 3, "name": "Machine Learning (למידת מכונה)"}
+    ]
+    for td in tracks_data:
+        t = db.query(models.Track).filter_by(id=td["id"]).first()
+        if not t:
+            t = models.Track(id=td["id"], name=td["name"])
+            db.add(t)
     
+    # Create Job Roles
+    roles_data = [
+        {"id": 1, "title": "Full Stack Developer", "demand_level": "High"},
+        {"id": 2, "title": "Security Researcher", "demand_level": "High"},
+        {"id": 3, "title": "Data Scientist", "demand_level": "High"},
+        {"id": 4, "title": "Mobile Dev", "demand_level": "Medium"}
+    ]
+    for rd in roles_data:
+        r = db.query(models.JobRole).filter_by(id=rd["id"]).first()
+        if not r:
+            r = models.JobRole(id=rd["id"], title=rd["title"], demand_level=rd["demand_level"])
+            db.add(r)
+            
+    # Create Skills
+    skills_data = [
+        "Python", "Git", "Secure Coding", "Teamwork", "Industry Readiness", "React", "Machine Learning", "Data Analysis", "UI/UX", "iOS", "Android", "Web Development"
+    ]
+    db_skills = {}
+    for s_name in skills_data:
+        s = db.query(models.Skill).filter_by(name=s_name).first()
+        if not s:
+            s = models.Skill(name=s_name)
+            db.add(s)
+            db.commit()
+            db.refresh(s)
+        db_skills[s_name] = s
+
+    # Assign skills to roles
+    role_skills = {
+        "Full Stack Developer": ["React", "Web Development", "Git", "Teamwork", "Python"],
+        "Security Researcher": ["Secure Coding", "Python", "Git"],
+        "Data Scientist": ["Python", "Machine Learning", "Data Analysis", "Git"],
+        "Mobile Dev": ["iOS", "Android", "UI/UX", "Git"]
+    }
+    db.commit()
+    for role_title, s_names in role_skills.items():
+        role = db.query(models.JobRole).filter_by(title=role_title).first()
+        if role:
+            role.skills = [db_skills[n] for n in s_names]
+
+    # Create Courses
+    # Cyber Cluster (Track 1)
+    # UI Cluster (Track 2)
+    # ML Cluster (Track 3)
+    courses_data = [
+        # Machine Learning
+        {"code": 10127, "name": "Intro to AI / Databases", "workload": 4, "credits": 3.5, "track": 3, "skills": ["Python", "Machine Learning"]},
+        {"code": 10245, "name": "Machine Learning", "workload": 5, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning", "Data Analysis"]},
+        {"code": 10224, "name": "Computer Vision", "workload": 4, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning"]},
+        {"code": 10359, "name": "Autonomous Vehicles & HMI in AI", "workload": 3, "credits": 2.5, "track": 3, "skills": ["Machine Learning", "Industry Readiness"]},
+        {"code": 10240, "name": "Neural Networks & Deep Learning", "workload": 5, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning"]},
+        {"code": 10243, "name": "Neural Networks for Computer Vision", "workload": 4, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning"]},
+        {"code": 10351, "name": "Big Data Analysis", "workload": 3, "credits": 2.5, "track": 3, "skills": ["Data Analysis", "Python"]},
+        {"code": 10206, "name": "Information Theory", "workload": 3, "credits": 3, "track": 3, "skills": ["Data Analysis"]},
+
+        # Cyber
+        {"code": 10147, "name": "UI Characterization", "workload": 4, "credits": 4, "track": 1, "skills": ["UI/UX", "Teamwork"]},
+        {"code": 10313, "name": "Information Security", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "Industry Readiness"]},
+        {"code": 10208, "name": "UI Development", "workload": 4, "credits": 4, "track": 1, "skills": ["Web Development", "React"]},
+        {"code": 10233, "name": "Secure Development", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "Git"]},
+        {"code": 10227, "name": "Cyber Security", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding"]},
+        {"code": 10248, "name": "Modern Cryptography", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "Data Analysis"]},
+        {"code": 10234, "name": "Mobile Security", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "iOS", "Android"]},
+        {"code": 10228, "name": "Network Security", "workload": 3, "credits": 3, "track": 1, "skills": ["Secure Coding"]},
+
+        # UI (some overlap with Cyber according to prompt)
+        # 10147, 10313, 10208, 10234 are already above. We'll just add them to both tracks by setting track_id to UI, but wait - track_id is 1-to-many?
+        # In models.py: Course.track_id = Column(Integer, ForeignKey("tracks.id")) => it's 1-to-many. A course can only belong to one track.
+        # But the prompt says "Please ensure these specific courses are mapped to their respective clusters".
+        # We'll just create the remaining UI ones and assign them to Track 2.
+        {"code": 10220, "name": "Game Development", "workload": 3, "credits": 2.5, "track": 2, "skills": ["Teamwork", "UI/UX"]},
+        {"code": 10225, "name": "Visual UI Design", "workload": 3, "credits": 2.5, "track": 2, "skills": ["UI/UX"]},
+        {"code": 10219, "name": "iOS Development", "workload": 3, "credits": 2.5, "track": 2, "skills": ["iOS", "Git", "UI/UX"]},
+        {"code": 10266, "name": "Web Platform Development", "workload": 4, "credits": 3, "track": 2, "skills": ["Web Development", "React", "Git"]}
+    ]
+
+    for cd in courses_data:
+        c = db.query(models.Course).filter_by(course_code=cd["code"]).first()
+        if not c:
+            c = models.Course(
+                course_code=cd["code"],
+                name=cd["name"],
+                workload=cd["workload"],
+                credits=cd["credits"],
+                track_id=cd["track"]
+            )
+            db.add(c)
+        else:
+            c.name = cd["name"]
+            c.workload = cd["workload"]
+            c.credits = cd["credits"]
+            c.track_id = cd["track"]
+        
+        c.skills = [db_skills[n] for n in cd["skills"]]
+        
+    # Make sure overlap courses from Cyber are actually assigned to UI if they are more UI focused, or we just leave them in Cyber. 
+    # Or we can just let them be in Cyber, as a course can only have one track_id.
+    
+    db.commit()
     db.close()
+    print("Database seeded successfully!")
 
 if __name__ == "__main__":
-    seed_data()
+    seed_db()

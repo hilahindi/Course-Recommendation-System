@@ -33,6 +33,12 @@ class Course(Base):
     prerequisites = Column(String, default="")                 
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=True) 
     
+    day_of_week = Column(String, nullable=True)
+    start_time = Column(String, nullable=True)
+    end_time = Column(String, nullable=True)
+    room = Column(String, nullable=True)
+    lecturer = Column(String, nullable=True)
+    
     skills = relationship("Skill", secondary=course_skill_link, back_populates="courses")
 
 class Student(Base):
@@ -114,6 +120,16 @@ class CourseReview(Base):
     course_code = Column(Integer, ForeignKey("courses.course_code"), index=True)
     rating = Column(Integer)  # 1 to 5
     review_text = Column(String)
+    is_anonymous = Column(Boolean, default=False)
 
+    student = relationship("Student")
+    course = relationship("Course")
+
+class PlannedCourse(Base):
+    __tablename__ = "planned_courses"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), index=True)
+    course_code = Column(Integer, ForeignKey("courses.course_code"), index=True)
+    
     student = relationship("Student")
     course = relationship("Course")

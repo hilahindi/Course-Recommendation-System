@@ -21,10 +21,14 @@ def seed_db():
     
     # Create Job Roles
     roles_data = [
-        {"id": 1, "title": "Full Stack Developer", "demand_level": "High"},
-        {"id": 2, "title": "Security Researcher", "demand_level": "High"},
-        {"id": 3, "title": "Data Scientist", "demand_level": "High"},
-        {"id": 4, "title": "Mobile Dev", "demand_level": "Medium"}
+        {"id": 1, "title": "Cloud Security Engineer", "demand_level": "High"},
+        {"id": 2, "title": "Cybersecurity Analyst", "demand_level": "High"},
+        {"id": 3, "title": "Prompt Engineer", "demand_level": "High"},
+        {"id": 4, "title": "MLOps Engineer", "demand_level": "High"},
+        {"id": 5, "title": "Data Scientist", "demand_level": "High"},
+        {"id": 6, "title": "Full Stack Developer", "demand_level": "High"},
+        {"id": 7, "title": "Frontend Engineer", "demand_level": "High"},
+        {"id": 8, "title": "Mobile App Developer", "demand_level": "Medium"}
     ]
     for rd in roles_data:
         r = db.query(models.JobRole).filter_by(id=rd["id"]).first()
@@ -48,10 +52,14 @@ def seed_db():
 
     # Assign skills to roles
     role_skills = {
-        "Full Stack Developer": ["React", "Web Development", "Git", "Teamwork", "Python"],
-        "Security Researcher": ["Secure Coding", "Python", "Git"],
+        "Cloud Security Engineer": ["Secure Coding", "Python", "Git", "Industry Readiness"],
+        "Cybersecurity Analyst": ["Secure Coding", "Data Analysis", "Industry Readiness"],
+        "Prompt Engineer": ["Machine Learning", "Python", "Data Analysis"],
+        "MLOps Engineer": ["Machine Learning", "Python", "Git", "Web Development"],
         "Data Scientist": ["Python", "Machine Learning", "Data Analysis", "Git"],
-        "Mobile Dev": ["iOS", "Android", "UI/UX", "Git"]
+        "Full Stack Developer": ["React", "Web Development", "Git", "Teamwork", "Python"],
+        "Frontend Engineer": ["React", "Web Development", "UI/UX", "Git"],
+        "Mobile App Developer": ["iOS", "Android", "UI/UX", "Git", "Teamwork"]
     }
     db.commit()
     for role_title, s_names in role_skills.items():

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import ReviewModal from '../components/ReviewModal';
 
-function CourseModal({ course, onClose }: { course: any, onClose: () => void }) {
+function CourseModal({ course, onClose, onOpenReviews }: { course: any, onClose: () => void, onOpenReviews: () => void }) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,49 +15,49 @@ function CourseModal({ course, onClose }: { course: any, onClose: () => void }) 
   }, [course]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-100 backdrop-blur-sm animate-fade-in">
       <div className="glass-panel w-full max-w-3xl max-h-[90vh] overflow-y-auto relative !p-8 shadow-[0_0_50px_rgba(37,99,235,0.2)]">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 bg-gray-100 hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-all"
         >
           ✕
         </button>
         
-        <div className="mb-6 border-b border-white/10 pb-6">
+        <div className="mb-6 border-b border-gray-200 pb-6">
           <div className="flex items-center gap-3 mb-2">
-            <span className="bg-blue-500/20 px-3 py-1 rounded text-sm text-blue-300 font-mono border border-blue-500/30">
+            <span className="bg-blue-500/20 px-3 py-1 rounded text-sm text-emerald-700 font-mono border border-blue-500/30">
               {course.course_code}
             </span>
             <h2 className="text-3xl font-bold">{course.name}</h2>
           </div>
-          <p className="text-white/60">Syllabus summary and course details would go here. This course requires {course.workload} hours of effort per week and attendance is {course.mandatory_attendance ? 'strictly mandatory' : 'flexible'}.</p>
+          <p className="text-gray-500">תקציר הסילבוס ופרטי הקורס יופיעו כאן. קורס זה דורש {course.workload} שעות השקעה שבועיות והנוכחות בו {course.mandatory_attendance ? 'חובה בהחלט' : 'גמישה'}.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>
-            <h3 className="text-lg font-semibold text-blue-300 mb-3 border-b border-blue-500/20 pb-2">Skills You Will Gain</h3>
+            <h3 className="text-lg font-semibold text-emerald-700 mb-3 border-b border-blue-500/20 pb-2">כישורים נרכשים</h3>
             {course.skills?.length > 0 ? (
               <ul className="space-y-2">
                 {course.skills.map((s: any) => (
-                  <li key={s.id} className="flex items-center gap-2 text-sm text-white/80">
-                    <span className="text-blue-400">▹</span> {s.name}
+                  <li key={s.id} className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="text-emerald-600">▹</span> {s.name}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-white/50 text-sm italic">No specific skills listed.</p>
+              <p className="text-gray-400 text-sm italic">לא צוינו כישורים ספציפיים.</p>
             )}
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-blue-300 mb-3 border-b border-blue-500/20 pb-2">Prerequisites</h3>
+            <h3 className="text-lg font-semibold text-emerald-700 mb-3 border-b border-blue-500/20 pb-2">דרישות קדם</h3>
             {course.prerequisites ? (
-              <div className="bg-black/20 rounded-lg p-4 border border-white/10">
-                <div className="flex flex-col gap-2 relative before:absolute before:left-2.5 before:top-4 before:bottom-4 before:w-0.5 before:bg-white/10">
+              <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                <div className="flex flex-col gap-2 relative before:absolute before:left-2.5 before:top-4 before:bottom-4 before:w-0.5 before:bg-gray-100">
                   {course.prerequisites.split(',').map((p: string, i: number) => (
                     <div key={i} className="flex items-center gap-3 relative z-10">
                       <div className="w-5 h-5 rounded-full bg-orange-500/20 border border-orange-500/50 flex items-center justify-center text-[10px]">P</div>
-                      <span className="text-sm text-white/80">{p.trim()}</span>
+                      <span className="text-sm text-gray-500">{p.trim()}</span>
                     </div>
                   ))}
                   <div className="flex items-center gap-3 relative z-10 mt-2">
@@ -66,27 +67,32 @@ function CourseModal({ course, onClose }: { course: any, onClose: () => void }) 
                 </div>
               </div>
             ) : (
-              <p className="text-white/50 text-sm italic">None</p>
+              <p className="text-gray-400 text-sm italic">אין</p>
             )}
           </div>
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold text-blue-300 mb-4 border-b border-blue-500/20 pb-2">Student Reviews</h3>
+          <div className="flex justify-between items-center mb-4 border-b border-emerald-500/20 pb-2">
+            <h3 className="text-lg font-semibold text-emerald-700">ביקורות סטודנטים</h3>
+            <button onClick={onOpenReviews} className="text-sm bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded transition-colors shadow">
+              קרא / כתוב ביקורות
+            </button>
+          </div>
           {loading ? (
-            <div className="text-center text-white/50 text-sm">Loading reviews...</div>
+            <div className="text-center text-gray-400 text-sm">טוען ביקורות...</div>
           ) : reviews.length === 0 ? (
-            <div className="text-center text-white/50 text-sm italic bg-black/20 p-6 rounded-xl border border-white/5">No reviews yet for this course.</div>
+            <div className="text-center text-gray-400 text-sm italic bg-gray-100 p-6 rounded-xl border border-gray-200">אין ביקורות עדיין. היה הראשון לכתוב!</div>
           ) : (
             <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
               {reviews.map((r, i) => (
-                <div key={i} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div key={i} className="bg-gray-100 rounded-xl p-4 border border-gray-200">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-yellow-400">{'⭐'.repeat(r.rating)}</span>
-                    <span className="text-white/30 text-xs">{'⭐'.repeat(5 - r.rating)}</span>
-                    <span className="ml-auto text-xs text-white/40">Student #{r.student_id}</span>
+                    <span className="text-gray-400 text-xs">{'⭐'.repeat(5 - r.rating)}</span>
+                    <span className="ml-auto text-xs text-emerald-600 font-medium">{r.student_name || `סטודנט #${r.student_id}`}</span>
                   </div>
-                  <p className="text-sm text-white/80">{r.review_text}</p>
+                  <p className="text-sm text-gray-500">{r.review_text}</p>
                 </div>
               ))}
             </div>
@@ -112,6 +118,7 @@ export default function CourseExplorer() {
   const [prereqsMetOnly, setPrereqsMetOnly] = useState(false);
 
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [reviewCourse, setReviewCourse] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,48 +162,48 @@ export default function CourseExplorer() {
     <div className="space-y-6 animate-fade-in">
       {/* Header and Visual Track Navigator */}
       <div className="glass-panel !p-6">
-        <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">Course Explorer</h1>
+        <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">חיפוש קורסים</h1>
         
         <div className="flex flex-wrap gap-3 mb-6">
           <button
             onClick={() => setSelectedTrack(null)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedTrack === null ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedTrack === null ? 'bg-emerald-600 text-gray-800 shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-gray-100 text-gray-500 hover:bg-gray-100'}`}
           >
-            All Tracks
+            כל המסלולים
           </button>
           {tracks.map(t => (
             <button
               key={t.id}
               onClick={() => setSelectedTrack(t.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedTrack === t.id ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedTrack === t.id ? 'bg-emerald-600 text-gray-800 shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-gray-100 text-gray-500 hover:bg-gray-100'}`}
             >
               {t.name}
             </button>
           ))}
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 items-center bg-black/20 p-4 rounded-xl border border-white/5">
+        <div className="flex flex-col md:flex-row gap-4 items-center bg-gray-100 p-4 rounded-xl border border-gray-200">
           <div className="w-full md:w-1/3">
             <input 
               type="text" 
-              placeholder="Search by name or code..." 
+              placeholder="חפש לפי שם או קוד..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-white/40 focus:outline-none focus:border-blue-400 focus:bg-white/10 transition-colors m-0"
+              className="w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-2 text-gray-800 placeholder-white/40 focus:outline-none focus:border-emerald-400 focus:bg-gray-100 transition-colors m-0"
             />
           </div>
           <div className="flex-grow flex flex-wrap items-center gap-4 text-sm">
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input type="checkbox" checked={noMandatoryAttendance} onChange={e => setNoMandatoryAttendance(e.target.checked)} className="form-checkbox bg-black border-white/20 text-blue-500 rounded focus:ring-0" />
-              <span className="text-white/70 group-hover:text-white transition-colors">No Mandatory Attendance</span>
+              <input type="checkbox" checked={noMandatoryAttendance} onChange={e => setNoMandatoryAttendance(e.target.checked)} className="form-checkbox bg-black border-gray-200 text-blue-500 rounded focus:ring-0" />
+              <span className="text-gray-500 group-hover:text-gray-800 transition-colors">ללא נוכחות חובה</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input type="checkbox" checked={lowWorkload} onChange={e => setLowWorkload(e.target.checked)} className="form-checkbox bg-black border-white/20 text-blue-500 rounded focus:ring-0" />
-              <span className="text-white/70 group-hover:text-white transition-colors">Low Workload</span>
+              <input type="checkbox" checked={lowWorkload} onChange={e => setLowWorkload(e.target.checked)} className="form-checkbox bg-black border-gray-200 text-blue-500 rounded focus:ring-0" />
+              <span className="text-gray-500 group-hover:text-gray-800 transition-colors">עומס נמוך</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input type="checkbox" checked={prereqsMetOnly} onChange={e => setPrereqsMetOnly(e.target.checked)} className="form-checkbox bg-black border-white/20 text-blue-500 rounded focus:ring-0" />
-              <span className="text-white/70 group-hover:text-white transition-colors">Prerequisites Met Only</span>
+              <input type="checkbox" checked={prereqsMetOnly} onChange={e => setPrereqsMetOnly(e.target.checked)} className="form-checkbox bg-black border-gray-200 text-blue-500 rounded focus:ring-0" />
+              <span className="text-gray-500 group-hover:text-gray-800 transition-colors">דרישות קדם מולאו</span>
             </label>
           </div>
         </div>
@@ -215,46 +222,69 @@ export default function CourseExplorer() {
               className="glass-panel !p-6 flex flex-col h-full cursor-pointer hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-[0_10px_30px_rgba(37,99,235,0.2)] transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-4">
-                <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-blue-300">
+                <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-emerald-700">
                   {course.course_code}
                 </span>
                 {course.mandatory_attendance && (
                   <span className="text-[10px] uppercase tracking-wider bg-red-500/20 text-red-300 px-2 py-1 rounded border border-red-500/30">
-                    Mandatory
+                    חובה
                   </span>
                 )}
               </div>
               <h3 className="text-xl font-semibold mb-2 flex-grow">{course.name}</h3>
               
-              <div className="text-sm text-white/70 mb-4 space-y-1">
-                <p>Workload: <span className="text-white">{course.workload} hours/week</span></p>
+              <div className="text-sm text-gray-500 mb-4 space-y-1">
+                <p>עומס: <span className="text-gray-800">{course.workload} שעות בשבוע</span></p>
                 {course.prerequisites && (
-                  <p className="truncate">Prereqs: <span className="text-orange-300">{course.prerequisites}</span></p>
+                  <p className="truncate">דרישות קדם: <span className="text-orange-300">{course.prerequisites}</span></p>
                 )}
               </div>
 
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className="text-xs border border-gray-200 bg-gray-100 px-2 py-1 rounded-full text-gray-500">
+                  עומס: {course.workload}
+                </span>
+                <span className="text-xs border border-gray-200 bg-gray-100 px-2 py-1 rounded-full text-gray-500">
+                  נוכחות: {course.mandatory_attendance ? 'חובה' : 'גמיש'}
+                </span>
+                <span className="text-xs border border-teal-200 bg-teal-50 px-2 py-1 rounded-full text-teal-700">
+                  {course.day_of_week || 'טרם נקבע'} {course.start_time ? `${course.start_time}-${course.end_time}` : ''}
+                </span>
+              </div>
+
               {course.skills?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-auto pt-4 border-t border-white/10">
+                <div className="flex flex-wrap gap-1.5 mt-auto pt-4 border-t border-gray-200">
                   {course.skills.slice(0,3).map((s: any) => (
-                    <span key={s.id} className="text-xs bg-white/5 px-2 py-0.5 rounded text-white/80">
+                    <span key={s.id} className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">
                       {s.name}
                     </span>
                   ))}
-                  {course.skills.length > 3 && <span className="text-xs text-white/50">+{course.skills.length - 3}</span>}
+                  {course.skills.length > 3 && <span className="text-xs text-gray-400">+{course.skills.length - 3}</span>}
                 </div>
               )}
             </div>
           ))}
           {filteredCourses.length === 0 && (
-            <div className="col-span-full text-center py-12 text-white/50">
-              No courses found matching your filters.
+            <div className="col-span-full text-center py-12 text-gray-400">
+              לא נמצאו קורסים התואמים את הסינון שלך.
             </div>
           )}
         </div>
       )}
 
       {selectedCourse && (
-        <CourseModal course={selectedCourse} onClose={() => setSelectedCourse(null)} />
+        <CourseModal 
+          course={selectedCourse} 
+          onClose={() => setSelectedCourse(null)} 
+          onOpenReviews={() => {
+            setReviewCourse(selectedCourse);
+            setSelectedCourse(null);
+          }}
+        />
+      )}
+
+      {reviewCourse && (
+        <ReviewModal course={reviewCourse} onClose={() => setReviewCourse(null)} />
       )}
     </div>
   );

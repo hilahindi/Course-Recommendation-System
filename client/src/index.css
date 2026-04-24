@@ -9,9 +9,9 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: #fff;
-  background: linear-gradient(-45deg, #0a0a2a, #1a1a3a, #2b1055, #001b4a);
+  color-scheme: light;
+  color: #1f2937;
+  background: linear-gradient(-45deg, #e6f4ea, #f1f8e9, #e0f2f1, #e8f5e9);
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
 
@@ -52,32 +52,32 @@ button {
   font-size: 1rem;
   font-weight: 500;
   font-family: inherit;
-  background-color: #646cff;
+  background-color: #10b981;
   color: white;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 15px rgba(100, 108, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
 button:hover {
-  background-color: #535bf2;
+  background-color: #059669;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(100, 108, 255, 0.5);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto rgba(100, 108, 255, 0.5);
+  outline: 4px auto rgba(16, 185, 129, 0.5);
 }
 
 input {
   width: 100%;
   padding: 0.8rem 1rem;
   margin-bottom: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
+  background: rgba(255, 255, 255, 0.8);
+  color: #1f2937;
   font-family: inherit;
   font-size: 1rem;
   transition: border-color 0.3s;
@@ -85,32 +85,33 @@ input {
 
 input:focus {
   outline: none;
-  border-color: #646cff;
-  background: rgba(255, 255, 255, 0.1);
+  border-color: #10b981;
+  background: #ffffff;
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 2.5rem;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 41, 55, 0.05);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 8px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.5);
-  border-radius: 8px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.8);
 }
 
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.5);
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.8);
+}

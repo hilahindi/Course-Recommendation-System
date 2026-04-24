@@ -94,6 +94,7 @@ def create_course_review(db: Session, student_id: int, review: schemas.CourseRev
     if existing:
         existing.rating = review.rating
         existing.review_text = review.review_text
+        existing.is_anonymous = review.is_anonymous
         db.commit()
         db.refresh(existing)
         return existing
@@ -102,10 +103,30 @@ def create_course_review(db: Session, student_id: int, review: schemas.CourseRev
         student_id=student_id,
         course_code=review.course_code,
         rating=review.rating,
-        review_text=review.review_text
+        review_text=review.review_text,
+        is_anonymous=review.is_anonymous
     )
     db.add(db_review)
     db.commit()
     db.refresh(db_review)
     return db_review
 
+def get_planned_courses(db: Session, student_id: int):
+    return db.query(models.PlannedCourse).filter(models.PlannedCourse.student_id == student_id).all()
+
+def add_planned_course(db: Session, student_id: int, course_code: int):
+    existing = db.query(models.PlannedCourse).filter_by(student_id=student_id, course_code=course_code).first()
+    if not existing:
+        db_course = models.PlannedCourse(student_id=student_id, course_code=course_code)
+        db.add(db_course)
+        db.commit()
+        db.refresh(db_course)
+        return db_course
+    return existing
+
+def remove_planned_course(db: Session, student_id: int, course_code: int):
+    existing = db.query(models.PlannedCourse).filter_by(student_id=student_id, course_code=course_code).first()
+    if existing:
+        db.delete(existing)
+        db.commit()
+    return True

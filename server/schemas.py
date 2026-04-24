@@ -30,7 +30,12 @@ class CourseBase(BaseModel):
     credits: float = 3.0
     mandatory_attendance: bool
     prerequisites: str
-    track_id: Optional[int]
+    track_id: Optional[int] = None
+    day_of_week: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    room: Optional[str] = None
+    lecturer: Optional[str] = None
     skills: List[SkillBase] = []
 
     class Config:
@@ -86,6 +91,7 @@ class CourseReviewCreate(BaseModel):
     course_code: int
     rating: int
     review_text: str
+    is_anonymous: bool = False
 
 class CourseReviewResponse(BaseModel):
     id: int
@@ -93,7 +99,18 @@ class CourseReviewResponse(BaseModel):
     course_code: int
     rating: int
     review_text: str
+    is_anonymous: bool = False
+    student_name: Optional[str] = None
 
     class Config:
         from_attributes = True
 
+class PlannedCourseBase(BaseModel):
+    course_code: int
+
+class PlannedCourseResponse(PlannedCourseBase):
+    id: int
+    course: CourseBase
+    
+    class Config:
+        from_attributes = True

@@ -34,8 +34,8 @@ export default function Auth({ onLogin }: { onLogin?: () => void }) {
 
   return (
     <div className="glass-panel w-[400px] max-w-[90vw] !p-8 animate-fade-in">
-      <h2 className="text-center mb-8 text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-        {isLogin ? 'Welcome Back' : 'Join the Platform'}
+      <h2 className="text-center mb-8 text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">
+        {isLogin ? 'ברוך שובך' : 'הצטרף לפלטפורמה'}
       </h2>
       
       {error && (
@@ -48,46 +48,46 @@ export default function Auth({ onLogin }: { onLogin?: () => void }) {
         {!isLogin && (
           <input 
             type="text" 
-            placeholder="Full Name" 
+            placeholder="שם מלא" 
             value={name} 
             onChange={(e) => setName(e.target.value)} 
             required 
-            className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-blue-400 transition-colors"
+            className="w-full bg-gray-100 border border-gray-200 rounded-lg p-3 text-gray-800 focus:outline-none focus:border-emerald-400 transition-colors"
           />
         )}
         <input 
           type="email" 
-          placeholder="Email Address" 
+          placeholder="כתובת אימייל" 
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
           required 
-          className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-blue-400 transition-colors"
+          className="w-full bg-gray-100 border border-gray-200 rounded-lg p-3 text-gray-800 focus:outline-none focus:border-emerald-400 transition-colors"
         />
         <input 
           type="password" 
-          placeholder="Password" 
+          placeholder="סיסמה" 
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
           required 
-          className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-blue-400 transition-colors"
+          className="w-full bg-gray-100 border border-gray-200 rounded-lg p-3 text-gray-800 focus:outline-none focus:border-emerald-400 transition-colors"
         />
         <button 
           type="submit" 
           disabled={loading} 
-          className="mt-4 bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-medium shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50"
+          className="mt-4 bg-emerald-600 hover:bg-emerald-500 py-3 rounded-lg font-medium shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50"
         >
-          {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
+          {loading ? 'מעבד...' : (isLogin ? 'התחבר' : 'צור חשבון')}
         </button>
       </form>
       
-      <div className="text-center mt-8 text-sm text-white/60">
-        {isLogin ? "Don't have an account? " : "Already have an account? "}
+      <div className="text-center mt-8 text-sm text-gray-500">
+        {isLogin ? "אין לך חשבון? " : "יש לך כבר חשבון? "}
         <button 
           type="button"
           onClick={() => setIsLogin(!isLogin)} 
-          className="text-purple-400 hover:text-purple-300 font-medium transition-colors ml-1 bg-transparent border-none p-0 shadow-none hover:shadow-none hover:-translate-y-0"
+          className="text-teal-600 hover:text-teal-700 font-medium transition-colors mr-1 bg-transparent border-none p-0 shadow-none hover:shadow-none hover:-translate-y-0"
         >
-          {isLogin ? 'Sign Up' : 'Log In'}
+          {isLogin ? 'הרשם' : 'התחבר'}
         </button>
       </div>
     </div>

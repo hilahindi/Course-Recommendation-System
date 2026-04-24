@@ -15,24 +15,24 @@ export default function Navbar() {
   return (
     <nav className="glass-panel sticky top-4 z-50 mx-4 my-4 flex items-center justify-between !py-4">
       <div className="flex items-center gap-6">
-        <Link to="/" className="text-xl font-bold tracking-wider text-white">
-          Afeka <span className="text-blue-400">Recommender</span>
+        <Link to="/" className="text-xl font-bold tracking-wider text-gray-800">
+          אפקה <span className="text-emerald-600">Recommender</span>
         </Link>
         <div className="hidden md:flex gap-4">
-          <Link to="/" className="text-white/80 hover:text-white transition-colors">Dashboard</Link>
-          <Link to="/recommendations" className="text-white/80 hover:text-white transition-colors">Recommendations</Link>
-          <Link to="/explorer" className="text-white/80 hover:text-white transition-colors">Courses</Link>
-          <Link to="/questionnaire" className="text-white/80 hover:text-white transition-colors">Preferences</Link>
-          <Link to="/history" className="text-white/80 hover:text-white transition-colors">My History</Link>
+          <Link to="/" className="text-gray-500 hover:text-gray-800 transition-colors">לוח בקרה</Link>
+          <Link to="/recommendations" className="text-gray-500 hover:text-gray-800 transition-colors">המלצות</Link>
+          <Link to="/explorer" className="text-gray-500 hover:text-gray-800 transition-colors">חיפוש קורסים</Link>
+          {/* <Link to="/questionnaire" className="text-gray-500 hover:text-gray-800 transition-colors">העדפות</Link> */}
+          <Link to="/history" className="text-gray-500 hover:text-gray-800 transition-colors">היסטוריה שלי</Link>
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <span className="text-white/60 text-sm">Hello, {user.name}</span>
+        <span className="text-gray-500 text-sm">שלום, {user.name}</span>
         <button 
           onClick={handleLogout}
-          className="bg-white/10 hover:bg-white/20 text-white border border-white/20 py-1.5 px-4 rounded-lg text-sm transition-all"
+          className="bg-gray-100 hover:bg-gray-100 text-gray-800 border border-gray-200 py-1.5 px-4 rounded-lg text-sm transition-all"
         >
-          Sign Out
+          התנתק
         </button>
       </div>
     </nav>

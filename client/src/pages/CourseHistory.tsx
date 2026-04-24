@@ -22,18 +22,18 @@ function ReviewModal({ course, onClose }: { course: any, onClose: () => void }) 
       onClose();
     } catch (err) {
       console.error(err);
-      alert('Failed to submit review');
+      alert('שגיאה בשליחת הביקורת');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-100 backdrop-blur-sm animate-fade-in">
       <div className="glass-panel w-full max-w-lg relative !p-8 shadow-[0_0_40px_rgba(168,85,247,0.3)]">
-        <button onClick={onClose} className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors">✕</button>
-        <h2 className="text-2xl font-bold mb-2">Rate {course.name}</h2>
-        <p className="text-white/60 text-sm mb-6">Share your experience to help future students.</p>
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 transition-colors">✕</button>
+        <h2 className="text-2xl font-bold mb-2">דרג את {course.name}</h2>
+        <p className="text-gray-500 text-sm mb-6">שתף את החוויה שלך כדי לעזור לסטודנטים בעתיד.</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex flex-col items-center">
@@ -44,7 +44,7 @@ function ReviewModal({ course, onClose }: { course: any, onClose: () => void }) 
                   onMouseEnter={() => setHoverRating(star)}
                   onMouseLeave={() => setHoverRating(0)}
                   onClick={() => setRating(star)}
-                  className={`transition-all hover:scale-110 ${(hoverRating || rating) >= star ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'text-white/20'}`}
+                  className={`transition-all hover:scale-110 ${(hoverRating || rating) >= star ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'text-gray-400'}`}
                 >
                   ★
                 </span>
@@ -53,12 +53,12 @@ function ReviewModal({ course, onClose }: { course: any, onClose: () => void }) 
           </div>
 
           <div>
-            <label className="block text-sm text-white/70 mb-2">Your Review (Optional)</label>
+            <label className="block text-sm text-gray-500 mb-2">הביקורת שלך (רשות)</label>
             <textarea 
               value={reviewText}
               onChange={e => setReviewText(e.target.value)}
-              placeholder="What did you like or dislike about this course? How was the workload?"
-              className="w-full h-32 bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/40 focus:outline-none focus:border-purple-400 focus:bg-white/5 transition-all resize-none custom-scrollbar"
+              placeholder="מה אהבת או לא אהבת בקורס? איך היה העומס?"
+              className="w-full h-32 bg-gray-100 border border-gray-200 rounded-xl p-4 text-gray-800 placeholder-white/40 focus:outline-none focus:border-teal-400 focus:bg-gray-100 transition-all resize-none custom-scrollbar"
             ></textarea>
           </div>
 
@@ -67,7 +67,7 @@ function ReviewModal({ course, onClose }: { course: any, onClose: () => void }) 
             disabled={submitting || rating === 0}
             className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Submitting...' : 'Submit Review'}
+            {submitting ? 'שולח...' : 'שלח ביקורת'}
           </button>
         </form>
       </div>
@@ -119,11 +119,11 @@ export default function CourseHistory() {
   return (
     <div className="space-y-8 animate-fade-in">
       <header className="text-center mb-10">
-        <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-blue-400 to-purple-500">My Academic Journey</h1>
-        <p className="text-white/70">Your personalized skill tree. Track your progress, unlock new courses, and share your experiences.</p>
+        <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-emerald-400 to-teal-500">My Academic Journey</h1>
+        <p className="text-gray-500">Your personalized skill tree. Track your progress, unlock new courses, and share your experiences.</p>
       </header>
 
-      <div className="glass-panel overflow-x-auto p-8 border border-white/5 bg-black/20">
+      <div className="glass-panel overflow-x-auto p-8 border border-gray-200 bg-gray-100">
         <div className="min-w-[800px] flex flex-col gap-16 relative">
           {groupedCourses.map((level, i) => (
             <div key={i} className="flex justify-center gap-8 relative z-10">
@@ -132,39 +132,39 @@ export default function CourseHistory() {
                 const isAvailable = !isCompleted && hasPrereqs(course.prerequisites);
                 const isLocked = !isCompleted && !isAvailable;
 
-                let cardStyle = "border-white/10 bg-white/5 opacity-50 grayscale"; // Locked
+                let cardStyle = "border-gray-200 bg-gray-100 opacity-50 grayscale"; // Locked
                 if (isCompleted) {
                   cardStyle = "border-green-500/50 bg-green-500/10 shadow-[0_0_20px_rgba(34,197,94,0.2)]";
                 } else if (isAvailable) {
-                  cardStyle = "border-blue-400 bg-blue-500/20 shadow-[0_0_20px_rgba(96,165,250,0.4)] hover:-translate-y-1 transition-transform cursor-pointer";
+                  cardStyle = "border-emerald-400 bg-blue-500/20 shadow-[0_0_20px_rgba(96,165,250,0.4)] hover:-translate-y-1 transition-transform cursor-pointer";
                 }
 
                 return (
                   <div key={course.course_code} className={`w-64 rounded-2xl p-5 border backdrop-blur-md flex flex-col relative ${cardStyle}`}>
                     {isLocked && (
                       <div className="absolute inset-0 flex items-center justify-center z-20">
-                        <svg className="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                       </div>
                     )}
                     
                     <div className="flex justify-between items-start mb-3">
-                      <span className={`text-xs font-mono px-2 py-1 rounded ${isCompleted ? 'bg-green-500/20 text-green-300' : 'bg-white/10 text-white/70'}`}>
+                      <span className={`text-xs font-mono px-2 py-1 rounded ${isCompleted ? 'bg-green-500/20 text-green-300' : 'bg-gray-100 text-gray-500'}`}>
                         {course.course_code}
                       </span>
                       {isCompleted && <span className="text-xl">✅</span>}
                     </div>
                     
-                    <h3 className={`font-bold mb-2 ${isLocked ? 'text-white/50' : 'text-white'}`}>{course.name}</h3>
+                    <h3 className={`font-bold mb-2 ${isLocked ? 'text-gray-400' : 'text-gray-800'}`}>{course.name}</h3>
                     
                     {isLocked && (
                       <p className="text-xs text-orange-300/70 mt-auto pt-2">Requires: {course.prerequisites}</p>
                     )}
                     
                     {isCompleted && (
-                      <div className="mt-auto pt-4 border-t border-white/10">
+                      <div className="mt-auto pt-4 border-t border-gray-200">
                         <button 
                           onClick={() => setReviewingCourse(course)}
-                          className="w-full bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                          className="w-full bg-gray-100 hover:bg-gray-100 text-gray-800 text-sm py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
                           <span className="text-yellow-400">⭐</span> Rate Course
                         </button>

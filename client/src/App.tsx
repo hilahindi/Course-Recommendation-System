@@ -29,14 +29,14 @@ function App() {
   }, [user]);
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen text-white text-xl animate-pulse">Loading profile...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-gray-800 text-xl animate-pulse">Loading profile...</div>;
   }
 
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="absolute top-8 text-center">
-          <h1 className="text-3xl font-bold text-white/90">AI Course Recommender</h1>
+          <h1 className="text-3xl font-bold text-gray-700">AI Course Recommender</h1>
         </div>
         <Auth onLogin={() => {}} />
       </div>

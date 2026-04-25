@@ -1,133 +1,135 @@
 import os
-from sqlalchemy.orm import Session
-from database import SessionLocal, engine
+import re
+from database import SessionLocal, engine, Base
 import models
 
-def seed_db():
-    models.Base.metadata.create_all(bind=engine)
+print("Deleting all existing tables to ensure clean schema...")
+models.Base.metadata.drop_all(bind=engine)
+
+print("Recreating tables with new schema...")
+models.Base.metadata.create_all(bind=engine)
+
+def extract_all_courses(base_directory):
+    parsed_courses = {}
+    
+    # נוודא שהתיקייה הראשית קיימת
+    if not os.path.exists(base_directory):
+        print(f"Directory {base_directory} not found.")
+        return []
+
+    patterns = {
+        'lecturer': r"מרצה הקורס\s*:\s*(.*?)(?=\s*פרטים נוספים|\n|$)",
+        'day': r"יום בשבוע:\s*יום\s+([א-ת]+)(?=\s*שעת|$)",
+        'start_time': r"שעת התחלה\s*:\s*(\d{2}:\d{2})",
+        'end_time': r"שעת סיום:\s*(\d{2}:\d{2})",
+        'room': r"חדר לימוד:\s*(.*?)(?:\s\s+|\n|$)"
+    }
+
+    # os.walk סורק את התיקייה הראשית וכל תתי-התיקיות שקיימות בתוכה
+    for root, dirs, files in os.walk(base_directory):
+        
+        # --- תוספת חדשה: חילוץ שם התיקייה הנוכחית (למשל "חובה א") ---
+        folder_name = os.path.basename(root)
+        # -------------------------------------------------------------
+
+        for filename in files:
+            if filename.endswith(".txt"):
+                # מחבר את הנתיב המלא לקובץ
+                file_path = os.path.join(root, filename)
+                
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                    
+                    # 1. חילוץ שם הקורס
+                    name_match = re.search(r'קורס\s+(.+?)\s+שנה"ל', content)
+                    course_name = name_match.group(1).strip() if name_match else None
+                    
+                    # 2. חילוץ מספר הקורס (7 ספרות ראשונות)
+                    code_match = re.search(r'קבוצה\s*:\s*(\d{7})', content)
+                    course_code = int(code_match.group(1)) if code_match else None
+                    
+                    if course_name and course_code:
+                        # שימוש במילון כדי למנוע כפילויות של קורס שיש לו כמה קבוצות במערכת
+                        if course_code not in parsed_courses:
+                            # חלוקה לבלוקים לפי "קורס מסוג" כדי לחלץ את הנתונים הנוספים (כמו ב-extract.py)
+                            blocks = re.split(r"קורס\s+מסוג", content)
+                            
+                            lecturer, day, start_time, end_time, room = "", "", "", "", ""
+                            if len(blocks) > 1:
+                                block = blocks[1]
+                                def extract_val(pat):
+                                    m = re.search(pat, block)
+                                    return m.group(1).strip() if m else ""
+                                
+                                lecturer = extract_val(patterns['lecturer'])
+                                day = extract_val(patterns['day'])
+                                start_time = extract_val(patterns['start_time'])
+                                end_time = extract_val(patterns['end_time'])
+                                room = extract_val(patterns['room'])
+
+                            parsed_courses[course_code] = {
+                                "course_code": course_code,
+                                "name": course_name,
+                                "category": folder_name, # <-- הוספנו את הקטגוריה למילון
+                                "day_of_week": day,
+                                "start_time": start_time,
+                                "end_time": end_time,
+                                "room": room,
+                                "lecturer": lecturer
+                            }
+                            
+    return list(parsed_courses.values())
+
+def seed_data():
     db = SessionLocal()
 
-    # Create Tracks
-    tracks_data = [
-        {"id": 1, "name": "Cyber (סייבר)"},
-        {"id": 2, "name": "User Interfaces (ממשקי משתמש - Web, Android, iOS)"},
-        {"id": 3, "name": "Machine Learning (למידת מכונה)"}
-    ]
-    for td in tracks_data:
-        t = db.query(models.Track).filter_by(id=td["id"]).first()
-        if not t:
-            t = models.Track(id=td["id"], name=td["name"])
-            db.add(t)
+    print("Clearing old data and scanning all text files for new course data...")
     
-    # Create Job Roles
-    roles_data = [
-        {"id": 1, "title": "Cloud Security Engineer", "demand_level": "High"},
-        {"id": 2, "title": "Cybersecurity Analyst", "demand_level": "High"},
-        {"id": 3, "title": "Prompt Engineer", "demand_level": "High"},
-        {"id": 4, "title": "MLOps Engineer", "demand_level": "High"},
-        {"id": 5, "title": "Data Scientist", "demand_level": "High"},
-        {"id": 6, "title": "Full Stack Developer", "demand_level": "High"},
-        {"id": 7, "title": "Frontend Engineer", "demand_level": "High"},
-        {"id": 8, "title": "Mobile App Developer", "demand_level": "Medium"}
-    ]
-    for rd in roles_data:
-        r = db.query(models.JobRole).filter_by(id=rd["id"]).first()
-        if not r:
-            r = models.JobRole(id=rd["id"], title=rd["title"], demand_level=rd["demand_level"])
-            db.add(r)
-            
-    # Create Skills
-    skills_data = [
-        "Python", "Git", "Secure Coding", "Teamwork", "Industry Readiness", "React", "Machine Learning", "Data Analysis", "UI/UX", "iOS", "Android", "Web Development"
-    ]
-    db_skills = {}
-    for s_name in skills_data:
-        s = db.query(models.Skill).filter_by(name=s_name).first()
-        if not s:
-            s = models.Skill(name=s_name)
-            db.add(s)
-            db.commit()
-            db.refresh(s)
-        db_skills[s_name] = s
-
-    # Assign skills to roles
-    role_skills = {
-        "Cloud Security Engineer": ["Secure Coding", "Python", "Git", "Industry Readiness"],
-        "Cybersecurity Analyst": ["Secure Coding", "Data Analysis", "Industry Readiness"],
-        "Prompt Engineer": ["Machine Learning", "Python", "Data Analysis"],
-        "MLOps Engineer": ["Machine Learning", "Python", "Git", "Web Development"],
-        "Data Scientist": ["Python", "Machine Learning", "Data Analysis", "Git"],
-        "Full Stack Developer": ["React", "Web Development", "Git", "Teamwork", "Python"],
-        "Frontend Engineer": ["React", "Web Development", "UI/UX", "Git"],
-        "Mobile App Developer": ["iOS", "Android", "UI/UX", "Git", "Teamwork"]
-    }
+    # מחיקת הנתונים הישנים מהטבלאות כדי למנוע כפילויות
+    from sqlalchemy import text
+    db.execute(text("TRUNCATE TABLE courses, tracks CASCADE;"))
     db.commit()
-    for role_title, s_names in role_skills.items():
-        role = db.query(models.JobRole).filter_by(title=role_title).first()
-        if role:
-            role.skills = [db_skills[n] for n in s_names]
 
-    # Create Courses
-    # Cyber Cluster (Track 1)
-    # UI Cluster (Track 2)
-    # ML Cluster (Track 3)
-    courses_data = [
-        # Machine Learning
-        {"code": 10127, "name": "Intro to AI / Databases", "workload": 4, "credits": 3.5, "track": 3, "skills": ["Python", "Machine Learning"]},
-        {"code": 10245, "name": "Machine Learning", "workload": 5, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning", "Data Analysis"]},
-        {"code": 10224, "name": "Computer Vision", "workload": 4, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning"]},
-        {"code": 10359, "name": "Autonomous Vehicles & HMI in AI", "workload": 3, "credits": 2.5, "track": 3, "skills": ["Machine Learning", "Industry Readiness"]},
-        {"code": 10240, "name": "Neural Networks & Deep Learning", "workload": 5, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning"]},
-        {"code": 10243, "name": "Neural Networks for Computer Vision", "workload": 4, "credits": 3, "track": 3, "skills": ["Python", "Machine Learning"]},
-        {"code": 10351, "name": "Big Data Analysis", "workload": 3, "credits": 2.5, "track": 3, "skills": ["Data Analysis", "Python"]},
-        {"code": 10206, "name": "Information Theory", "workload": 3, "credits": 3, "track": 3, "skills": ["Data Analysis"]},
+    # יצירת מסלולי ההתמחות
+    track_web = models.Track(name="Web Development")
+    track_cyber = models.Track(name="Cyber Security")
+    track_data = models.Track(name="Data Science")
+    db.add_all([track_web, track_cyber, track_data])
+    db.commit() 
 
-        # Cyber
-        {"code": 10147, "name": "UI Characterization", "workload": 4, "credits": 4, "track": 1, "skills": ["UI/UX", "Teamwork"]},
-        {"code": 10313, "name": "Information Security", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "Industry Readiness"]},
-        {"code": 10208, "name": "UI Development", "workload": 4, "credits": 4, "track": 1, "skills": ["Web Development", "React"]},
-        {"code": 10233, "name": "Secure Development", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "Git"]},
-        {"code": 10227, "name": "Cyber Security", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding"]},
-        {"code": 10248, "name": "Modern Cryptography", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "Data Analysis"]},
-        {"code": 10234, "name": "Mobile Security", "workload": 3, "credits": 2.5, "track": 1, "skills": ["Secure Coding", "iOS", "Android"]},
-        {"code": 10228, "name": "Network Security", "workload": 3, "credits": 3, "track": 1, "skills": ["Secure Coding"]},
-
-        # UI (some overlap with Cyber according to prompt)
-        # 10147, 10313, 10208, 10234 are already above. We'll just add them to both tracks by setting track_id to UI, but wait - track_id is 1-to-many?
-        # In models.py: Course.track_id = Column(Integer, ForeignKey("tracks.id")) => it's 1-to-many. A course can only belong to one track.
-        # But the prompt says "Please ensure these specific courses are mapped to their respective clusters".
-        # We'll just create the remaining UI ones and assign them to Track 2.
-        {"code": 10220, "name": "Game Development", "workload": 3, "credits": 2.5, "track": 2, "skills": ["Teamwork", "UI/UX"]},
-        {"code": 10225, "name": "Visual UI Design", "workload": 3, "credits": 2.5, "track": 2, "skills": ["UI/UX"]},
-        {"code": 10219, "name": "iOS Development", "workload": 3, "credits": 2.5, "track": 2, "skills": ["iOS", "Git", "UI/UX"]},
-        {"code": 10266, "name": "Web Platform Development", "workload": 4, "credits": 3, "track": 2, "skills": ["Web Development", "React", "Git"]}
-    ]
-
-    for cd in courses_data:
-        c = db.query(models.Course).filter_by(course_code=cd["code"]).first()
-        if not c:
-            c = models.Course(
-                course_code=cd["code"],
-                name=cd["name"],
-                workload=cd["workload"],
-                credits=cd["credits"],
-                track_id=cd["track"]
-            )
-            db.add(c)
-        else:
-            c.name = cd["name"]
-            c.workload = cd["workload"]
-            c.credits = cd["credits"]
-            c.track_id = cd["track"]
-        
-        c.skills = [db_skills[n] for n in cd["skills"]]
-        
-    # Make sure overlap courses from Cyber are actually assigned to UI if they are more UI focused, or we just leave them in Cyber. 
-    # Or we can just let them be in Cyber, as a course can only have one track_id.
+    # הגדרת הנתיב לתיקיית הנתונים הראשית (שמכילה את כל שאר התיקיות)
+    # ודאי שזהו הנתיב הנכון מאיפה שאת מריצה את הסקריפט
+    base_data_path = "./data" 
     
-    db.commit()
+    # קריאה לפונקציה החדשה שסורקת הכל
+    all_courses_data = extract_all_courses(base_data_path)
+    
+    courses_to_insert = []
+    for course_data in all_courses_data:
+        new_course = models.Course(
+            course_code=course_data["course_code"],
+            name=course_data["name"],
+            category=course_data.get("category", ""), # <-- הזרקת הקטגוריה ל-DB
+            workload=3,                  # ערך דיפולטיבי
+            mandatory_attendance=False,  # ערך דיפולטיבי
+            prerequisites="", 
+            track_id=None,
+            day_of_week=course_data.get("day_of_week", ""),
+            start_time=course_data.get("start_time", ""),
+            end_time=course_data.get("end_time", ""),
+            room=course_data.get("room", ""),
+            lecturer=course_data.get("lecturer", "")
+        )
+        courses_to_insert.append(new_course)
+        
+    if courses_to_insert:
+        db.add_all(courses_to_insert)
+        db.commit()
+        print(f"Success: Database has been seeded with {len(courses_to_insert)} unique courses from all folders!")
+    else:
+        print("No courses found. Please check your folder structure and paths.")
+    
     db.close()
-    print("Database seeded successfully!")
 
 if __name__ == "__main__":
-    seed_db()
+    seed_data()

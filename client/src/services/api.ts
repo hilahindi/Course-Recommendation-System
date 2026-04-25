@@ -12,6 +12,7 @@ export const api = {
 
   // Courses
   getCourses: async () => axios.get(`${API_URL}/courses/`),
+  getYearlyMandatoryCourses: async () => axios.get(`${API_URL}/courses/yearly-mandatory`),
 
   // Profile
   getProfile: async (studentId: number) => axios.get(`${API_URL}/profile/${studentId}`),

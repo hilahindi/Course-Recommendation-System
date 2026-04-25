@@ -26,7 +26,12 @@ class Course(Base):
     __tablename__ = "courses"
     
     course_code = Column(Integer, primary_key=True, index=True) 
-    name = Column(String, index=True)                           
+    name = Column(String, index=True)  
+    
+    # --- השדה החדש שנוסף לשמירת שם התיקייה (חובה א', בחירה, וכו') ---
+    category = Column(String, nullable=True, index=True) 
+    # -----------------------------------------------------------------
+                           
     workload = Column(Integer)
     credits = Column(Float, default=3.0)                                 
     mandatory_attendance = Column(Boolean, default=False)      

@@ -5,7 +5,6 @@ from pydantic import BaseModel, EmailStr
 import bcrypt
 import logging
 
-# ייבוא עבור ה-Cron Job
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import SessionLocal
 
@@ -13,19 +12,15 @@ import models
 from database import engine, get_db
 from routers import courses, profile, recommendations, metadata
 
-# יצירת הטבלאות
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# --- הגדרת ה-Cron Job (משימות רקע) ---
 
 def scheduled_market_sync():
-    """פונקציה שרצה ברקע ומעדכנת את המשרות דרך ה-AI"""
     print("⏰ [Cron Job] Starting automated market roles sync...")
     db = SessionLocal()
     try:
-        # אנחנו קוראים ישירות לפונקציה מהראוטר כדי לא לשכפל קוד
         from routers.metadata import sync_job_roles_from_ai
         result = sync_job_roles_from_ai(db)
         print(f"✅ [Cron Job] Sync completed: {result['message']}")
@@ -34,11 +29,8 @@ def scheduled_market_sync():
     finally:
         db.close()
 
-# אתחול המתזמן
 scheduler = BackgroundScheduler()
 
-# הגדרה לריצה כל יום ראשון ב-01:00 בלילה
-# בזמן פיתוח אפשר לשנות ל minutes=5 כדי לראות שזה עובד
 scheduler.add_job(scheduled_market_sync, 'cron', day_of_week='sun', hour=1, minute=0)
 scheduler.start()
 
@@ -93,7 +85,6 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     
     return {"message": "Login successful", "user_id": db_user.id, "name": db_user.name}
 
-# הכללת הראוטרים
 app.include_router(courses.router)
 app.include_router(profile.router)
 app.include_router(recommendations.router)

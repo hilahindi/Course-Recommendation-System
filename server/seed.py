@@ -87,7 +87,7 @@ def seed_data():
     
     # מחיקת הנתונים הישנים מהטבלאות כדי למנוע כפילויות
     from sqlalchemy import text
-    db.execute(text("TRUNCATE TABLE courses, tracks CASCADE;"))
+    db.execute(text("TRUNCATE TABLE courses, tracks, jobroles CASCADE;"))
     db.commit()
 
     # יצירת מסלולי ההתמחות
@@ -95,11 +95,25 @@ def seed_data():
     track_cyber = models.Track(name="Cyber Security")
     track_data = models.Track(name="Data Science")
     db.add_all([track_web, track_cyber, track_data])
-    db.commit() 
+    db.commit()
+
+    # יצירת תפקידים ראשוניים למסד הנתונים
+    default_roles = [
+        models.JobRole(title="מפתח Front-end", demand_level="High"),
+        models.JobRole(title="מפתח Back-end", demand_level="High"),
+        models.JobRole(title="מפתח Full Stack", demand_level="High"),
+        models.JobRole(title="מהנדס דאטה", demand_level="High"),
+        models.JobRole(title="מפתח DevOps", demand_level="Medium"),
+        models.JobRole(title="מהנדס אבטחת מידע", demand_level="High"),
+        models.JobRole(title="אנליסט מערכות", demand_level="Medium"),
+        models.JobRole(title="מפתח QA / אוטומציה", demand_level="Medium"),
+    ]
+    db.add_all(default_roles)
+    db.commit()
 
     # הגדרת הנתיב לתיקיית הנתונים הראשית (שמכילה את כל שאר התיקיות)
     # ודאי שזהו הנתיב הנכון מאיפה שאת מריצה את הסקריפט
-    base_data_path = "./data" 
+    base_data_path = "./data"
     
     # קריאה לפונקציה החדשה שסורקת הכל
     all_courses_data = extract_all_courses(base_data_path)

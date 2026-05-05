@@ -34,6 +34,21 @@ def update_student_profile(db: Session, student_id: int, profile_update: schemas
     if profile_update.onboarding_completed is not None:
         profile.onboarding_completed = profile_update.onboarding_completed
     
+    # --- הטיפול החדש בזמינות הסטודנט (Student Availability) ---
+    if profile_update.availabilities is not None:
+        # 1. מחיקת חלונות הזמן הישנים כדי למנוע כפילויות
+        db.query(models.StudentAvailability).filter(models.StudentAvailability.profile_id == profile.id).delete()
+        
+        # 2. הוספת חלונות הזמן החדשים
+        for avail in profile_update.availabilities:
+            new_avail = models.StudentAvailability(
+                profile_id=profile.id,
+                day_of_week=avail.day_of_week,
+                start_time=avail.start_time,
+                end_time=avail.end_time
+            )
+            db.add(new_avail)
+    
     # Update Many-to-Many relationships
     profile.interested_tracks = db.query(models.Track).filter(models.Track.id.in_(profile_update.interested_track_ids)).all()
     profile.interested_job_roles = db.query(models.JobRole).filter(models.JobRole.id.in_(profile_update.interested_job_role_ids)).all()
@@ -130,3 +145,32 @@ def remove_planned_course(db: Session, student_id: int, course_code: int):
         db.delete(existing)
         db.commit()
     return True
+
+# --- פונקציות חדשות לניהול מועדים ודרישות קדם ---
+
+def add_course_occurrence(db: Session, course_code: int, occurrence: schemas.CourseOccurrenceSchema):
+    """מוסיף מועד/קבוצה חדשה לקורס קיים"""
+    db_occurrence = models.CourseOccurrence(
+        course_code=course_code,
+        day_of_week=occurrence.day_of_week,
+        start_time=occurrence.start_time,
+        end_time=occurrence.end_time,
+        room=occurrence.room,
+        lecturer=occurrence.lecturer,
+        occurrence_type=occurrence.occurrence_type
+    )
+    db.add(db_occurrence)
+    db.commit()
+    db.refresh(db_occurrence)
+    return db_occurrence
+
+def add_course_prerequisite(db: Session, course_code: int, prerequisite_code: int):
+    """מקשר קורס אחד כדרישת קדם לקורס אחר"""
+    course = db.query(models.Course).filter(models.Course.course_code == course_code).first()
+    prereq = db.query(models.Course).filter(models.Course.course_code == prerequisite_code).first()
+    
+    if course and prereq and prereq not in course.prerequisite_courses:
+        course.prerequisite_courses.append(prereq)
+        db.commit()
+        db.refresh(course)
+    return course

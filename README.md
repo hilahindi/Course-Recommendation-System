@@ -77,15 +77,22 @@ The project uses PostgreSQL in Docker on **host port 5433** (container port 5432
    ```bash
    cd client
    ```
-2. Install the Node dependencies (if you haven't already):
+2. Install dependencies:
    ```bash
-   npm install
+   setup.bat
+   ```
+   On Mac/Linux:
+   ```bash
+   chmod +x setup.sh run_client.sh
+   ./setup.sh
    ```
 3. Start the Vite development server:
    ```bash
-   npm run dev
+   run_client.bat
    ```
-   *The frontend is now running at `http://localhost:5173`*
+   On Mac/Linux: `./run_client.sh`
+
+   *The frontend runs at `http://localhost:5173`*
 
 ---
 

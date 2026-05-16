@@ -64,7 +64,7 @@ export default function Navbar() {
       className="glass-panel relative box-border h-16 min-h-16 max-h-16 w-full shrink-0 overflow-visible !p-0"
       aria-label="ניווט ראשי"
     >
-      <div className="flex h-full w-full items-center justify-between gap-3 px-5 sm:px-8 box-border">
+      <div className="flex h-full w-full items-center justify-between gap-3 px-1 sm:px-4 box-border">
         <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-6">
           <Link
             to="/"

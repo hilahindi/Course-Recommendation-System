@@ -27,12 +27,20 @@
   100% { background-position: 0% 50%; }
 }
 
+html {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  justify-content: center;
+  width: 100%;
   min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
   min-height: 100vh;
 }
 

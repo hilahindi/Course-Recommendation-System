@@ -1,10 +1,12 @@
 from sqlalchemy import (
     Column,
+    DateTime,
     Integer,
     String,
     Boolean,
     ForeignKey,
     Table,
+    Text,
     Float,
     UniqueConstraint,
 )
@@ -174,6 +176,17 @@ class JobRole(Base):
     demand_level = Column(String, default="Medium")
 
     skills = relationship("Skill", secondary=jobrole_skill_link, back_populates="jobroles")
+
+
+class IndustryJob(Base):
+    """Industry job postings synced from the Adzuna API."""
+
+    __tablename__ = "industry_jobs"
+
+    id = Column(String, primary_key=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
 
 
 class CourseReview(Base):

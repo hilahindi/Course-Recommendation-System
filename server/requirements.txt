@@ -11,3 +11,4 @@ bcrypt
 anthropic
 apscheduler
 python-dotenv
+httpx

@@ -4,11 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import models
 from api.v1.routes import auth, courses, metadata, profile, recommendations
-from database import SessionLocal, engine
+from database import SessionLocal, engine, ensure_industry_jobs_table_sync
 from repositories.course_repository import CourseRepository
 from services.market_role_service_impl import MarketRoleServiceImpl
 
 models.Base.metadata.create_all(bind=engine)
+ensure_industry_jobs_table_sync()
 
 app = FastAPI()
 

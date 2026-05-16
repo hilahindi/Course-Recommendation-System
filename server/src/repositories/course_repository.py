@@ -1,6 +1,9 @@
+import asyncio
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import List, Optional
 
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 import models
@@ -274,3 +277,45 @@ class CourseRepository:
             self._db.delete(existing)
             self._db.commit()
         return True
+
+    # --- Industry jobs (Adzuna sync) ---
+
+    async def bulk_update_industry_jobs(self, jobs: list[dict]) -> None:
+        await asyncio.to_thread(self._bulk_update_industry_jobs_sync, jobs)
+
+    def _bulk_update_industry_jobs_sync(self, jobs: list[dict]) -> None:
+        if not jobs:
+            return
+
+        now = datetime.now(timezone.utc)
+        rows = [
+            {
+                "id": str(job["id"]),
+                "title": job["title"],
+                "description": job["description"],
+                "updated_at": now,
+            }
+            for job in jobs
+        ]
+
+        stmt = insert(models.IndustryJob).values(rows)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "title": stmt.excluded.title,
+                "description": stmt.excluded.description,
+                "updated_at": stmt.excluded.updated_at,
+            },
+        )
+        try:
+            self._db.execute(stmt)
+            current_ids = [str(job["id"]) for job in jobs]
+            (
+                self._db.query(models.IndustryJob)
+                .filter(models.IndustryJob.id.notin_(current_ids))
+                .delete(synchronize_session=False)
+            )
+            self._db.commit()
+        except Exception:
+            self._db.rollback()
+            raise

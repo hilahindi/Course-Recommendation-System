@@ -5,10 +5,10 @@ import { useState, useEffect } from 'react';
 import Auth from './components/Auth';
 import Layout from './components/Layout';
 import Recommendations from './pages/Recommendations';
-import Questionnaire from './pages/Questionnaire';
 import CourseExplorer from './pages/CourseExplorer';
 import CourseHistory from './pages/CourseHistory';
 import Onboarding from './pages/Onboarding';
+import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 
 function App() {
@@ -56,8 +56,9 @@ function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/recommendations" element={<Recommendations />} />
-        <Route path="/questionnaire" element={<Questionnaire />} />
+        <Route path="/questionnaire" element={<Profile />} />
         <Route path="/explorer" element={<CourseExplorer />} />
         <Route path="/history" element={<CourseHistory />} />
         <Route path="*" element={<Navigate to="/" replace />} />

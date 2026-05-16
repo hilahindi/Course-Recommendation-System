@@ -101,7 +101,7 @@ export default function Recommendations() {
             <>
               <h2 className="text-2xl mb-4">אנו זקוקים למידע נוסף</h2>
               <p className="text-gray-500 mb-6">מלא את שאלון ההעדפות כדי לקבל המלצות מותאמות אישית.</p>
-              <Link to="/questionnaire" className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/30">
+              <Link to="/profile" className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/30">
                 התחל שאלון
               </Link>
             </>

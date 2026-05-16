@@ -142,7 +142,7 @@ export default function Dashboard() {
       <div className="glass-panel p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">ההעדפות שלך</h2>
-          <Link to="/questionnaire" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+          <Link to="/profile" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
             עריכת העדפות ←
           </Link>
         </div>

@@ -20,6 +20,7 @@ export default function Navbar() {
         </Link>
         <div className="hidden md:flex gap-4">
           <Link to="/" className="text-gray-500 hover:text-gray-800 transition-colors">לוח בקרה</Link>
+          <Link to="/profile" className="text-gray-500 hover:text-gray-800 transition-colors">העדפות</Link>
           <Link to="/recommendations" className="text-gray-500 hover:text-gray-800 transition-colors">המלצות</Link>
           <Link to="/explorer" className="text-gray-500 hover:text-gray-800 transition-colors">חיפוש קורסים</Link>
           {/* <Link to="/questionnaire" className="text-gray-500 hover:text-gray-800 transition-colors">העדפות</Link> */}

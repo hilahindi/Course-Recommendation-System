@@ -1,32 +1,35 @@
-import json
-import os
-
-import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-import models
 from database import get_db
+from dependencies import get_course_repository, get_market_role_service
 from dtos import JobRoleBase, TrackBase
+from interfaces.market_role_service import MarketRoleService
 from repositories.course_repository import CourseRepository
 
 import config  # noqa: F401 — loads server/.env
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
 router = APIRouter(prefix="/api/v1/metadata", tags=["metadata"])
 
 
-def get_repository(db: Session = Depends(get_db)) -> CourseRepository:
-    return CourseRepository(db)
+def _serialize_job_roles(repository: CourseRepository) -> List[JobRoleBase]:
+    return [JobRoleBase.model_validate(role) for role in repository.get_job_roles()]
 
 
 @router.get("/", response_model=Dict[str, Any])
-def read_metadata(repository: CourseRepository = Depends(get_repository)):
+def read_metadata(
+    repository: CourseRepository = Depends(get_course_repository),
+    market_role_service: MarketRoleService = Depends(get_market_role_service),
+    db: Session = Depends(get_db),
+):
     try:
         tracks_db = repository.get_tracks()
         job_roles_db = repository.get_job_roles()
+
+        if market_role_service.ensure_market_roles_in_db(db, len(job_roles_db)):
+            job_roles_db = repository.get_job_roles()
+
         return {
             "tracks": [TrackBase.model_validate(t) for t in tracks_db],
             "job_roles": [JobRoleBase.model_validate(j) for j in job_roles_db],
@@ -36,57 +39,34 @@ def read_metadata(repository: CourseRepository = Depends(get_repository)):
         raise HTTPException(status_code=500, detail="Failed to fetch metadata")
 
 
-def sync_job_roles_from_ai(db: Session):
-    """Sync market roles from AI. Callable from cron or HTTP."""
+@router.get("/market-roles", response_model=List[JobRoleBase])
+def read_market_roles(
+    repository: CourseRepository = Depends(get_course_repository),
+    market_role_service: MarketRoleService = Depends(get_market_role_service),
+    db: Session = Depends(get_db),
+):
     try:
-        prompt = """
-        אתה מומחה קריירה וגיוס טכנולוגי בכיר בישראל. 
-        מצא את 8 תפקידי הג'וניור (Entry Level) המבוקשים ביותר כרגע לבוגרי מדעי המחשב.
-        החזר רשימת JSON נקייה ללא טקסט נוסף במבנה: 
-        [{"title": "שם התפקיד בעברית", "demand_level": "High"}]
-        """
-
-        response = client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}],
+        market_role_service.ensure_market_roles_in_db(
+            db, len(repository.get_job_roles())
         )
-
-        response_text = response.content[0].text
-        clean_json = response_text.replace("```json", "").replace("```", "").strip()
-        ai_roles = json.loads(clean_json)
-
-        try:
-            db.query(models.JobRole).delete()
-            db.commit()
-        except Exception:
-            db.rollback()
-            print("Could not delete existing roles, updating instead.")
-
-        added_count = 0
-        for role_data in ai_roles:
-            title = role_data.get("title")
-            demand = role_data.get("demand_level", "High")
-            existing_role = (
-                db.query(models.JobRole).filter(models.JobRole.title == title).first()
-            )
-            if not existing_role:
-                db.add(models.JobRole(title=title, demand_level=demand))
-                added_count += 1
-
-        db.commit()
-
-        return {
-            "message": "Market roles synchronized successfully",
-            "added_new_roles": added_count,
-            "roles_from_ai": ai_roles,
-        }
+        return _serialize_job_roles(repository)
     except Exception as e:
-        db.rollback()
-        print(f"AI Sync Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Claude AI Sync failed: {str(e)}")
+        print(f"Error in GET /metadata/market-roles: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch market roles")
 
 
 @router.post("/sync-market-roles")
-def sync_market_roles_endpoint(db: Session = Depends(get_db)):
-    return sync_job_roles_from_ai(db)
+def sync_market_roles_endpoint(
+    market_role_service: MarketRoleService = Depends(get_market_role_service),
+    db: Session = Depends(get_db),
+):
+    try:
+        return market_role_service.sync_job_roles(db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[Market Roles] Sync error: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Market roles sync failed: {str(e)}"
+        )

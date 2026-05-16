@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import models
 from api.v1.routes import auth, courses, metadata, profile, recommendations
 from database import SessionLocal, engine
-from api.v1.routes.metadata import sync_job_roles_from_ai
+from repositories.course_repository import CourseRepository
+from services.market_role_service_impl import MarketRoleServiceImpl
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -16,7 +17,8 @@ def scheduled_market_sync():
     print("⏰ [Cron Job] Starting automated market roles sync...")
     db = SessionLocal()
     try:
-        result = sync_job_roles_from_ai(db)
+        market_role_service = MarketRoleServiceImpl(CourseRepository(db))
+        result = market_role_service.sync_job_roles(db)
         print(f"✅ [Cron Job] Sync completed: {result['message']}")
     except Exception as e:
         print(f"❌ [Cron Job] Critical error during sync: {e}")

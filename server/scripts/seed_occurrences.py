@@ -6,7 +6,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 import _bootstrap  # noqa: E402, F401
-from _bootstrap import PROJECT_ROOT
+from _bootstrap import DATA_DIR
 
 import os
 import re
@@ -54,7 +54,7 @@ def parse_course_file(file_path):
 
 def seed_data():
     db: Session = SessionLocal()
-    base_data_dir = str(PROJECT_ROOT / "data") 
+    base_data_dir = str(DATA_DIR) 
     
     if not os.path.exists(base_data_dir):
         print(f"שגיאה: התיקייה {base_data_dir} לא נמצאה.")

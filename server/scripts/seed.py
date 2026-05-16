@@ -7,7 +7,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 import _bootstrap  # noqa: E402, F401
-from _bootstrap import PROJECT_ROOT
+from _bootstrap import DATA_DIR
 
 import os
 import re
@@ -110,7 +110,7 @@ def seed_data():
 
     # הגדרת הנתיב לתיקיית הנתונים הראשית (שמכילה את כל שאר התיקיות)
     # ודאי שזהו הנתיב הנכון מאיפה שאת מריצה את הסקריפט
-    base_data_path = str(PROJECT_ROOT / "data") 
+    base_data_path = str(DATA_DIR) 
     
     # קריאה לפונקציה החדשה שסורקת הכל
     all_courses_data = extract_all_courses(base_data_path)

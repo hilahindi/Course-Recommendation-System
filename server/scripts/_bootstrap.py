@@ -3,7 +3,7 @@ Shared setup for database seed scripts.
 
 - Loads server/.env before any database imports
 - Adds server/src to sys.path so `database`, `models`, and `config` resolve
-- Exposes SERVER_ROOT and PROJECT_ROOT for data file paths
+- Exposes SERVER_ROOT, PROJECT_ROOT, and DATA_DIR for data file paths
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 SERVER_ROOT = SCRIPTS_DIR.parent
 SRC_DIR = SERVER_ROOT / "src"
 PROJECT_ROOT = SERVER_ROOT.parent
+# Course text files live at repo root (outside server/)
+DATA_DIR = PROJECT_ROOT / "data"
 
 # Load environment first so DATABASE_URL is set before engine creation
 _env_file = SERVER_ROOT / ".env"

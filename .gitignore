@@ -13,4 +13,7 @@ client/dist/
 # Ignore local environment variables and database files
 .env
 server/*.db
-data
+
+# Course source files (local only — not committed)
+data/
+server/data/

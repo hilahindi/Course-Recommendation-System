@@ -1,6 +1,17 @@
+from pathlib import Path
+import sys
+
+# Guarantee scripts/ is on sys.path (needed when cwd is server/ or project root)
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import _bootstrap  # noqa: E402, F401
+from _bootstrap import PROJECT_ROOT
+
 import os
 import re
-from database import SessionLocal, engine, Base
+from database import SessionLocal, engine
 import models
 
 print("Deleting all existing tables to ensure clean schema...")
@@ -99,7 +110,7 @@ def seed_data():
 
     # הגדרת הנתיב לתיקיית הנתונים הראשית (שמכילה את כל שאר התיקיות)
     # ודאי שזהו הנתיב הנכון מאיפה שאת מריצה את הסקריפט
-    base_data_path = "./data" 
+    base_data_path = str(PROJECT_ROOT / "data") 
     
     # קריאה לפונקציה החדשה שסורקת הכל
     all_courses_data = extract_all_courses(base_data_path)

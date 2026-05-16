@@ -1,10 +1,20 @@
+from pathlib import Path
+import sys
+
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import _bootstrap  # noqa: E402, F401
+from _bootstrap import PROJECT_ROOT
+
 import os
 import re
 import pdfplumber
 from database import SessionLocal
 import models
 
-SYLLABUS_DIR = "./data/syllabus"
+SYLLABUS_DIR = PROJECT_ROOT / "data" / "syllabus"
 
 
 def extract_text_from_pdf(pdf_path):

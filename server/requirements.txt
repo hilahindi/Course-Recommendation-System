@@ -7,3 +7,7 @@ python-jose[cryptography]
 pydantic
 pydantic[email]
 pdfplumber
+bcrypt
+anthropic
+apscheduler
+python-dotenv

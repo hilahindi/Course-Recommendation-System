@@ -11,3 +11,4 @@ client/dist/
 # Ignore local environment variables and database files
 .env
 server/*.db
+/data

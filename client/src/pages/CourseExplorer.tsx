@@ -159,10 +159,10 @@ export default function CourseExplorer() {
   });
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="w-full min-w-0 space-y-6 animate-fade-in">
       {/* Header and Visual Track Navigator */}
       <div className="glass-panel !p-6">
-        <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">חיפוש קורסים</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">חיפוש קורסים</h1>
         
         <div className="flex flex-wrap gap-3 mb-6">
           <button
@@ -214,7 +214,7 @@ export default function CourseExplorer() {
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
           {filteredCourses.map(course => (
             <div 
               key={course.course_code} 

@@ -50,17 +50,17 @@ export default function Dashboard() {
   const progressPercent = Math.min(Math.round((earnedCredits / totalCredits) * 100), 100);
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="w-full min-w-0 space-y-6 sm:space-y-8 animate-fade-in">
       <header>
-        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">
           ברוך שובך, {user?.name}
         </h1>
         <p className="text-gray-500 mt-2">הנה סקירה של המצב האקדמי שלך.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Degree Progress Widget */}
-        <div className="glass-panel col-span-1 md:col-span-1 flex flex-col items-center justify-center p-6 hover:shadow-teal-500/20 transition-all">
+        <div className="glass-panel col-span-1 flex flex-col items-center justify-center p-5 sm:p-6 hover:shadow-teal-500/20 transition-all">
           <h2 className="text-xl font-semibold mb-6 w-full text-right">התקדמות בתואר</h2>
           <div className="relative w-32 h-32">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -95,7 +95,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recommendation Hero Section */}
-        <div className="glass-panel col-span-1 md:col-span-2 p-8 relative overflow-hidden group">
+        <div className="glass-panel col-span-1 lg:col-span-2 p-5 sm:p-8 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
           
           <div className="relative z-10 h-full flex flex-col justify-between">
@@ -105,10 +105,10 @@ export default function Dashboard() {
               </div>
               {topRecommendation ? (
                 <>
-                  <h2 className="text-3xl font-bold mb-2">{topRecommendation.course.name}</h2>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">{topRecommendation.course.name}</h2>
                   <p className="text-gray-500 mb-4 line-clamp-2">{topRecommendation.explanation}</p>
                   
-                  <div className="flex gap-4 mt-4">
+                  <div className="flex flex-wrap gap-2 sm:gap-4 mt-4">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <span className="w-2 h-2 rounded-full bg-blue-400"></span>
                       ציון התאמה: {topRecommendation.score}%
@@ -139,14 +139,14 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Profile Summary */}
-      <div className="glass-panel p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">ההעדפות שלך</h2>
+      <div className="glass-panel p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <h2 className="text-lg sm:text-xl font-semibold">ההעדפות שלך</h2>
           <Link to="/profile" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
             עריכת העדפות ←
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
             <div className="text-gray-400 text-xs mb-1 uppercase tracking-wider">שנת לימודים</div>
             <div className="font-medium text-lg">שנה {profile?.year_of_study || 1}</div>
@@ -171,9 +171,9 @@ export default function Dashboard() {
       </div>
 
       {/* My Schedule (System) */}
-      <div className="glass-panel p-6 mt-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">מערכת השעות שלי</h2>
+      <div className="glass-panel p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <h2 className="text-lg sm:text-xl font-semibold">מערכת השעות שלי</h2>
           <Link to="/explorer" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
             חיפוש קורסים ←
           </Link>
@@ -182,10 +182,10 @@ export default function Dashboard() {
         {schedule.length > 0 ? (
           <div className="space-y-3">
             {schedule.map((item, index) => (
-              <div key={index} className="flex justify-between items-center p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                <div>
+              <div key={index} className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-gray-800">{item.course.name} <span className="text-sm text-gray-500 font-normal">({item.course_code})</span></h3>
-                  <div className="text-sm text-gray-600 mt-1 flex items-center gap-4">
+                  <div className="text-sm text-gray-600 mt-1 flex flex-col sm:flex-row flex-wrap gap-1 sm:gap-4">
                     <span><strong className="text-emerald-600">יום:</strong> {item.course.day_of_week || 'טרם נקבע'}</span>
                     <span><strong className="text-emerald-600">שעות:</strong> {item.course.start_time || '?'} - {item.course.end_time || '?'}</span>
                     <span><strong className="text-emerald-600">חדר:</strong> {item.course.room || 'טרם נקבע'}</span>
@@ -197,7 +197,7 @@ export default function Dashboard() {
                     await api.removeSchedule(user.user_id, item.course_code);
                     setSchedule(schedule.filter(s => s.course_code !== item.course_code));
                   }}
-                  className="text-red-500 hover:text-red-600 text-sm font-medium pr-4 border-r border-gray-200 mr-4"
+                  className="text-red-500 hover:text-red-600 text-sm font-medium sm:pr-4 sm:border-r sm:border-gray-200 sm:mr-4 self-end sm:self-center shrink-0"
                 >
                   הסר
                 </button>

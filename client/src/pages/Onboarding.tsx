@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Select from 'react-select';
+import { FLUID_CONTAINER } from '../lib/layout';
 
 const INITIAL_SCHEDULE = {
   'ראשון': { active: false, start: '08:00', end: '21:00' },
@@ -165,8 +166,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   if (loading) return <div className="text-center mt-20 text-gray-800 text-xl" dir="rtl">טוען את המערכת...</div>;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" dir="rtl">
-      <div className="glass-panel w-full max-w-3xl relative overflow-hidden bg-white shadow-2xl rounded-2xl p-8">
+    <div className="min-h-screen w-full flex items-center justify-center box-border py-6 sm:py-8" dir="rtl">
+      <div className={`${FLUID_CONTAINER} flex justify-center`}>
+      <div className="glass-panel w-full max-w-3xl relative overflow-hidden bg-white shadow-2xl rounded-2xl p-4 sm:p-6 lg:p-8">
         
         {/* Progress Bar */}
         <div className="absolute top-0 right-0 w-full h-1.5 bg-gray-100">
@@ -525,6 +527,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

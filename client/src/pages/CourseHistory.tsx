@@ -117,9 +117,9 @@ export default function CourseHistory() {
   ].filter(group => group.length > 0);
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <header className="text-center mb-10">
-        <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-emerald-400 to-teal-500">My Academic Journey</h1>
+    <div className="w-full min-w-0 space-y-6 sm:space-y-8 animate-fade-in">
+      <header className="text-center mb-8 sm:mb-10">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-green-400 via-emerald-400 to-teal-500">My Academic Journey</h1>
         <p className="text-gray-500">Your personalized skill tree. Track your progress, unlock new courses, and share your experiences.</p>
       </header>
 

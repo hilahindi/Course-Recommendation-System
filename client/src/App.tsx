@@ -34,9 +34,9 @@ function App() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="pb-10">
-          <h1 className="text-3xl font-bold text-gray-700">AI Course Recommender</h1>
+      <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 sm:px-6 box-border">
+        <div className="pb-10 text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-700">AfekAdvisor</h1>
         </div>
         <Auth onLogin={() => { }} />
       </div>

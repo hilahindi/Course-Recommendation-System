@@ -75,9 +75,9 @@ export default function Recommendations() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="w-full min-w-0 space-y-6 sm:space-y-8 animate-fade-in">
       <div className="glass-panel text-center">
-        <h1 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">
           המלצות חכמות
         </h1>
         <p className="text-gray-500 max-w-2xl mx-auto">
@@ -110,7 +110,7 @@ export default function Recommendations() {
       ) : (
         <div className="grid gap-6">
           {activeRecommendations.map((rec, index) => (
-            <div key={rec.course.course_code} className="glass-panel relative overflow-hidden group border border-gray-200 hover:border-blue-500/30 transition-all">
+            <div key={rec.course.course_code} className="glass-panel relative overflow-hidden group border border-gray-200 hover:border-blue-500/30 transition-all p-4 sm:p-6">
               {/* Rank & Match Badge */}
               <div className="absolute top-0 right-0 flex">
                 {index === 0 && (

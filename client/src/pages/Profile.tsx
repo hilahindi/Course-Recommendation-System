@@ -166,10 +166,10 @@ export default function Profile() {
   const workloadDisplay = isEditing ? calculateTotalWorkload() : displayProfile?.target_workload || 0;
 
   return (
-    <div className="space-y-8 animate-fade-in" dir="rtl">
+    <div className="w-full min-w-0 space-y-6 sm:space-y-8 animate-fade-in" dir="rtl">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-l from-emerald-500 to-teal-500">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-l from-emerald-500 to-teal-500">
             עריכת ההעדפות
           </h1>
           <p className="text-gray-500 mt-2">ניהול פרטים אקדמיים, מטרות קריירה וזמני למידה</p>
@@ -203,9 +203,9 @@ export default function Profile() {
       </header>
 
       {/* Summary cards — same layout as Dashboard "ההעדפות שלך" */}
-      <div className="glass-panel p-6">
+      <div className="glass-panel p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-6">ההעדפות שלך</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
             <div className="text-gray-400 text-xs mb-1 uppercase tracking-wider">שנת לימודים</div>
             <div className="font-medium text-lg">שנה {yearLabel(isEditing ? yearOfStudy : displayProfile?.year_of_study || 1)}</div>
@@ -233,7 +233,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className={`glass-panel p-6 md:p-8 space-y-10 ${!isEditing ? 'opacity-90' : ''}`}>
+      <div className={`glass-panel p-4 sm:p-6 lg:p-8 space-y-8 sm:space-y-10 ${!isEditing ? 'opacity-90' : ''}`}>
         {/* Degree */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-800">מסלול הלימודים</h2>
@@ -344,7 +344,7 @@ export default function Profile() {
             {Object.entries(schedule).map(([dayName, data]) => (
               <div
                 key={dayName}
-                className={`flex items-center gap-4 p-3 rounded-xl border transition-colors ${
+                className={`flex flex-col gap-3 sm:flex-row sm:items-center p-3 rounded-xl border transition-colors ${
                   data.active ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'
                 }`}
               >

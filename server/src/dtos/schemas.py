@@ -141,6 +141,13 @@ class RecommendationResponse(BaseModel):
     explanation: str
 
 
+class AverageFeatureVectorResponse(BaseModel):
+    vector: Optional[List[float]] = None
+    dimension: int = 0
+    job_count: int = 0
+    source: str = "industry_jobs.feature_vector"
+
+
 class CourseReviewCreate(BaseModel):
     course_code: int
     rating: int

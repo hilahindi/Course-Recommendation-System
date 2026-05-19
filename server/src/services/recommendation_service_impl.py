@@ -19,9 +19,7 @@ class RecommendationServiceImpl(RecommendationService):
         interested_track_ids = {t.id for t in profile.interested_tracks}
         interested_job_roles = profile.interested_job_roles
         target_role_names = [jr.title for jr in interested_job_roles]
-        target_skill_ids = {
-            s.id for jr in interested_job_roles for s in jr.skills
-        }
+        target_skill_ids: set[int] = set()
 
         recommended: List[RecommendationResponse] = []
 
@@ -39,15 +37,15 @@ class RecommendationServiceImpl(RecommendationService):
                     continue
 
             score = 0
-            course_skill_ids = {s.id for s in course.skills}
+            course_skill_ids = {s.id for s in course.linked_skills}
             if course_skill_ids & target_skill_ids:
                 score += 35
 
             if course.track_id and course.track_id in interested_track_ids:
                 score += 25
 
-            if course.skills:
-                score += min(20, len(course.skills) * 5)
+            if course.linked_skills:
+                score += min(20, len(course.linked_skills) * 5)
 
             reviews = self._repository.get_course_reviews(course.course_code)
             if reviews:
@@ -61,7 +59,7 @@ class RecommendationServiceImpl(RecommendationService):
             if not profile.needs_flexible_attendance or not course.mandatory_attendance:
                 score += 5
 
-            course_skill_names = [s.name for s in course.skills]
+            course_skill_names = [s.name for s in course.linked_skills]
             top_skill = (
                 course_skill_names[0] if course_skill_names else "Technical Knowledge"
             )

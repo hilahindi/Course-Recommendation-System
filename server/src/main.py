@@ -3,13 +3,28 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import models
-from api.v1.routes import auth, courses, metadata, profile, recommendations
-from database import SessionLocal, engine, ensure_industry_jobs_table_sync
+from api.v1 import (
+    auth_router,
+    courses_router,
+    jobs_router,
+    metadata_router,
+    profile_router,
+    recommendations_router,
+)
+from database import (
+    SessionLocal,
+    engine,
+    drop_jobrole_skill_link_table,
+    drop_jobroles_skill_vector,
+    ensure_industry_jobs_table_sync,
+)
 from repositories.course_repository import CourseRepository
 from services.market_role_service_impl import MarketRoleServiceImpl
 
 models.Base.metadata.create_all(bind=engine)
 ensure_industry_jobs_table_sync()
+drop_jobroles_skill_vector()
+drop_jobrole_skill_link_table()
 
 app = FastAPI()
 
@@ -39,11 +54,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(courses.router)
-app.include_router(profile.router)
-app.include_router(recommendations.router)
-app.include_router(metadata.router)
+app.include_router(auth_router.router)
+app.include_router(courses_router.router)
+app.include_router(profile_router.router)
+app.include_router(recommendations_router.router)
+app.include_router(metadata_router.router)
+app.include_router(jobs_router.router)
 
 
 @app.get("/api/v1/test")

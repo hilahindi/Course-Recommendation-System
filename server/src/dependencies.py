@@ -2,12 +2,18 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from database import get_db
+from interfaces.adzuna_sync_service import AdzunaSyncService
 from interfaces.course_service import CourseService
+from interfaces.embedding_service import EmbeddingService
+from interfaces.job_pipeline_service import JobPipelineService
 from interfaces.market_role_service import MarketRoleService
 from interfaces.profile_service import ProfileService
 from interfaces.recommendation_service import RecommendationService
 from repositories.course_repository import CourseRepository
+from services.adzuna_sync_service_impl import AdzunaSyncServiceImpl
 from services.course_service_impl import CourseServiceImpl
+from services.embedding_service_impl import LocalEmbeddingServiceImpl
+from services.job_pipeline_service_impl import JobPipelineServiceImpl
 from services.market_role_service_impl import MarketRoleServiceImpl
 from services.profile_service_impl import ProfileServiceImpl
 from services.recommendation_service_impl import RecommendationServiceImpl
@@ -39,3 +45,18 @@ def get_profile_service(
     repository: CourseRepository = Depends(get_course_repository),
 ) -> ProfileService:
     return ProfileServiceImpl(repository)
+
+
+def get_embedding_service() -> EmbeddingService:
+    return LocalEmbeddingServiceImpl()
+
+
+def get_adzuna_sync_service() -> AdzunaSyncService:
+    return AdzunaSyncServiceImpl()
+
+
+def get_job_pipeline_service(
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+    adzuna_service: AdzunaSyncService = Depends(get_adzuna_sync_service),
+) -> JobPipelineService:
+    return JobPipelineServiceImpl(embedding_service, adzuna_service)

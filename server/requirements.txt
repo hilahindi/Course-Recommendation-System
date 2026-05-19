@@ -12,3 +12,5 @@ anthropic
 apscheduler
 python-dotenv
 httpx
+numpy
+scikit-learn

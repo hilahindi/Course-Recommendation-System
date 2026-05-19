@@ -1,4 +1,4 @@
-"""Live Adzuna job search sync into industry_jobs."""
+"""Live Adzuna job search API client implementation."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any, Optional
 import httpx
 
 import config  # noqa: F401 — loads server/.env before getenv
+from interfaces.adzuna_sync_service import AdzunaSyncService
 from repositories.course_repository import CourseRepository
 
 _UNSUPPORTED_COUNTRIES = frozenset({"il", "israel"})
@@ -17,10 +18,10 @@ _DEFAULT_COUNTRY = "gb"
 _DEFAULT_SEARCH_WHAT = "developer"
 
 
-class AdzunaSyncService:
+class AdzunaSyncServiceImpl(AdzunaSyncService):
     RESULTS_PER_PAGE = 50
 
-    def __init__(self, repository: CourseRepository) -> None:
+    def __init__(self, repository: CourseRepository | None = None) -> None:
         self._repository = repository
         self.app_id = os.getenv("ADZUNA_APP_ID", _DEFAULT_APP_ID).strip()
         self.app_key = os.getenv("ADZUNA_APP_KEY", _DEFAULT_APP_KEY).strip()
@@ -31,7 +32,10 @@ class AdzunaSyncService:
     def resolve_search_what(keyword: Optional[str]) -> str:
         if keyword is not None and keyword.strip():
             return keyword.strip()
-        return os.getenv("ADZUNA_SEARCH_WHAT", _DEFAULT_SEARCH_WHAT).strip() or _DEFAULT_SEARCH_WHAT
+        return (
+            os.getenv("ADZUNA_SEARCH_WHAT", _DEFAULT_SEARCH_WHAT).strip()
+            or _DEFAULT_SEARCH_WHAT
+        )
 
     @staticmethod
     def _resolve_country_code() -> str:
@@ -47,7 +51,7 @@ class AdzunaSyncService:
         return country
 
     @staticmethod
-    def _map_job(result: dict) -> dict | None:
+    def map_industry_job(result: dict) -> dict | None:
         job_id = result.get("id")
         title = result.get("title")
         if job_id is None or not title:
@@ -60,7 +64,9 @@ class AdzunaSyncService:
             "description": "" if description is None else str(description),
         }
 
-    async def sync_jobs(self, keyword: Optional[str] = None) -> int:
+    async def fetch_search_results(
+        self, keyword: Optional[str] = None
+    ) -> list[dict[str, Any]]:
         search_what = self.resolve_search_what(keyword)
         url = f"https://api.adzuna.com/v1/api/jobs/{self.country_code}/search/1"
         params: dict[str, str | int] = {
@@ -89,11 +95,17 @@ class AdzunaSyncService:
         if not isinstance(raw_results, list):
             raise ValueError('Adzuna API response is missing a valid "results" list.')
 
+        return [result for result in raw_results if isinstance(result, dict)]
+
+    async def sync_jobs(self, keyword: Optional[str] = None) -> int:
+        if self._repository is None:
+            raise RuntimeError("CourseRepository is required for industry_jobs sync.")
+
+        raw_results = await self.fetch_search_results(keyword)
         jobs = [
             mapped
             for result in raw_results
-            if isinstance(result, dict)
-            for mapped in [self._map_job(result)]
+            for mapped in [self.map_industry_job(result)]
             if mapped is not None
         ]
 

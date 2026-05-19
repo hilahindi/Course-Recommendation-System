@@ -1,4 +1,5 @@
 from dtos.schemas import (
+    AverageFeatureVectorResponse,
     CourseBase,
     CourseOccurrenceSchema,
     CourseReviewCreate,
@@ -18,6 +19,7 @@ from dtos.schemas import (
 )
 
 __all__ = [
+    "AverageFeatureVectorResponse",
     "CourseBase",
     "CourseOccurrenceSchema",
     "CourseReviewCreate",

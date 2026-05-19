@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -9,6 +11,7 @@ from sqlalchemy import (
     Text,
     Float,
     UniqueConstraint,
+    JSON,
 )
 from sqlalchemy.orm import relationship
 
@@ -18,13 +21,6 @@ course_skill_link = Table(
     "course_skill_link",
     Base.metadata,
     Column("course_code", Integer, ForeignKey("courses.course_code"), primary_key=True),
-    Column("skill_id", Integer, ForeignKey("skills.id"), primary_key=True),
-)
-
-jobrole_skill_link = Table(
-    "jobrole_skill_link",
-    Base.metadata,
-    Column("jobrole_id", Integer, ForeignKey("jobroles.id"), primary_key=True),
     Column("skill_id", Integer, ForeignKey("skills.id"), primary_key=True),
 )
 
@@ -75,11 +71,15 @@ class Course(Base):
     end_time = Column(String, nullable=True)
     room = Column(String, nullable=True)
     lecturer = Column(String, nullable=True)
+    skills = Column(Text, nullable=True)
+    avg_rating = Column(Float, nullable=False, default=0.0)
 
     occurrences = relationship(
         "CourseOccurrence", back_populates="course", cascade="all, delete-orphan"
     )
-    skills = relationship("Skill", secondary=course_skill_link, back_populates="courses")
+    linked_skills = relationship(
+        "Skill", secondary=course_skill_link, back_populates="courses"
+    )
     prerequisite_courses = relationship(
         "Course",
         secondary=course_prerequisite_link,
@@ -165,8 +165,9 @@ class Skill(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
 
-    courses = relationship("Course", secondary=course_skill_link, back_populates="skills")
-    jobroles = relationship("JobRole", secondary=jobrole_skill_link, back_populates="skills")
+    courses = relationship(
+        "Course", secondary=course_skill_link, back_populates="linked_skills"
+    )
 
 
 class JobRole(Base):
@@ -175,11 +176,9 @@ class JobRole(Base):
     title = Column(String, unique=True, index=True)
     demand_level = Column(String, default="Medium")
 
-    skills = relationship("Skill", secondary=jobrole_skill_link, back_populates="jobroles")
-
 
 class IndustryJob(Base):
-    """Industry job postings synced from the Adzuna API."""
+    """Industry job postings synced from Adzuna; full pipeline lives on this table."""
 
     __tablename__ = "industry_jobs"
 
@@ -187,6 +186,8 @@ class IndustryJob(Base):
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
+    extracted_skills = Column(Text, nullable=True)
+    feature_vector = Column(JSON, nullable=True)
 
 
 class CourseReview(Base):

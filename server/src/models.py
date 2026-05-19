@@ -72,6 +72,7 @@ class Course(Base):
     room = Column(String, nullable=True)
     lecturer = Column(String, nullable=True)
     skills = Column(Text, nullable=True)
+    feature_vector = Column(JSON, nullable=True)
     avg_rating = Column(Float, nullable=False, default=0.0)
 
     occurrences = relationship(

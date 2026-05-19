@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -51,6 +52,124 @@ class CourseRepository:
             .filter(models.CourseReview.course_code == course_code)
             .all()
         )
+
+    def get_course_by_code(self, course_code: int) -> Optional[models.Course]:
+        return (
+            self._db.query(models.Course)
+            .filter(models.Course.course_code == course_code)
+            .first()
+        )
+
+    def get_courses_for_pipeline(self) -> List[models.Course]:
+        return self._db.query(models.Course).all()
+
+    def get_courses_with_empty_skills(self) -> List[models.Course]:
+        return (
+            self._db.query(models.Course)
+            .filter(
+                (models.Course.skills.is_(None))
+                | (models.Course.skills == "")
+            )
+            .all()
+        )
+
+    def get_courses_with_skills_text(self) -> List[models.Course]:
+        return (
+            self._db.query(models.Course)
+            .filter(
+                models.Course.skills.isnot(None),
+                models.Course.skills != "",
+            )
+            .all()
+        )
+
+    def get_student_by_email(self, email: str) -> Optional[models.Student]:
+        return (
+            self._db.query(models.Student)
+            .filter(models.Student.email == email)
+            .first()
+        )
+
+    def create_seed_student(
+        self, email: str, name: str, hashed_password: str
+    ) -> models.Student:
+        student = models.Student(
+            email=email, name=name, hashed_password=hashed_password
+        )
+        self._db.add(student)
+        self._db.flush()
+        self._db.add(models.StudentProfile(student_id=student.id))
+        self._db.commit()
+        self._db.refresh(student)
+        return student
+
+    def upsert_seed_course(
+        self,
+        course_code: int,
+        name: str,
+        workload: int = 6,
+        category: str = "elective",
+    ) -> tuple[models.Course, bool]:
+        existing = self.get_course_by_code(course_code)
+        if existing:
+            return existing, False
+
+        course = models.Course(
+            course_code=course_code,
+            name=name,
+            workload=workload,
+            category=category,
+            avg_rating=0.0,
+        )
+        self._db.add(course)
+        self._db.commit()
+        self._db.refresh(course)
+        return course, True
+
+    def add_seed_review(
+        self,
+        student_id: int,
+        course_code: int,
+        rating: int,
+        review_text: str,
+        is_anonymous: bool = False,
+    ) -> models.CourseReview:
+        return self.create_course_review(
+            student_id,
+            CourseReviewCreate(
+                course_code=course_code,
+                rating=rating,
+                review_text=review_text,
+                is_anonymous=is_anonymous,
+            ),
+        )
+
+    def update_course_skills(self, course: models.Course, skills: str) -> None:
+        course.skills = skills
+        self._db.commit()
+
+    def update_course_feature_vector(
+        self, course: models.Course, vector: list[float]
+    ) -> None:
+        course.feature_vector = vector
+        self._db.commit()
+
+    def update_course_avg_rating(self, course_code: int, avg_rating: float) -> None:
+        course = self.get_course_by_code(course_code)
+        if course:
+            course.avg_rating = avg_rating
+            self._db.commit()
+
+    def get_average_ratings_by_course(self) -> dict[int, float]:
+        rows = (
+            self._db.query(
+                models.CourseReview.course_code,
+                func.avg(models.CourseReview.rating),
+            )
+            .group_by(models.CourseReview.course_code)
+            .all()
+        )
+        return {int(course_code): float(avg) for course_code, avg in rows}
 
     def create_course_review(
         self, student_id: int, review: CourseReviewCreate
@@ -117,6 +236,23 @@ class CourseRepository:
         return course
 
     # --- Metadata ---
+
+    _DEFAULT_TRACK_NAMES: tuple[str, ...] = (
+        "Web Development",
+        "Cyber Security",
+        "Data Science",
+    )
+
+    def ensure_default_tracks(self) -> None:
+        """Insert default tracks when the table is empty (e.g. after partial seed)."""
+        existing_names = {track.name for track in self.get_tracks()}
+        added = False
+        for name in self._DEFAULT_TRACK_NAMES:
+            if name not in existing_names:
+                self._db.add(models.Track(name=name))
+                added = True
+        if added:
+            self._db.commit()
 
     def get_tracks(self) -> List[models.Track]:
         return self._db.query(models.Track).all()

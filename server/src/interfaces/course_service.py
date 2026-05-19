@@ -1,7 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Dict, List
 
-from dtos import CourseBase, CourseReviewCreate, CourseReviewResponse
+from sqlalchemy.orm import Session
+
+from dtos import (
+    CourseBase,
+    CoursePipelineSeedResult,
+    CoursePipelineStepResult,
+    CourseReviewCreate,
+    CourseReviewResponse,
+)
 
 
 class CourseService(ABC):
@@ -23,4 +31,31 @@ class CourseService(ABC):
     def create_review(
         self, course_code: int, student_id: int, review: CourseReviewCreate
     ) -> CourseReviewResponse:
+        ...
+
+    @abstractmethod
+    def submit_course_review(
+        self,
+        student_id: int,
+        course_code: int,
+        rating: int,
+        review_text: str,
+        is_anonymous: bool,
+    ) -> CourseReviewResponse:
+        ...
+
+    @abstractmethod
+    def run_pipeline_seed(self, db_session: Session) -> CoursePipelineSeedResult:
+        ...
+
+    @abstractmethod
+    def run_pipeline_extract_skills(self, db_session: Session) -> CoursePipelineStepResult:
+        ...
+
+    @abstractmethod
+    def run_pipeline_vectorize(self, db_session: Session) -> CoursePipelineStepResult:
+        ...
+
+    @abstractmethod
+    def run_pipeline_compile_ratings(self, db_session: Session) -> CoursePipelineStepResult:
         ...

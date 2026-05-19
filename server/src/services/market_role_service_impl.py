@@ -145,11 +145,19 @@ class MarketRoleServiceImpl(MarketRoleService):
             return self._sync_with_mock(db, replace_existing=True)
 
     def ensure_market_roles_in_db(self, db: Session, existing_count: int) -> bool:
+        """Populate job roles when empty so onboarding always has choices."""
         if existing_count > 0:
             return False
 
         if self.is_anthropic_api_configured():
-            return False
+            try:
+                self._sync_with_anthropic(db)
+                return True
+            except Exception as exc:
+                logger.warning(
+                    "[Market Roles] Auto-sync via Anthropic failed (%s); using mock.",
+                    exc,
+                )
 
         self._sync_with_mock(db, replace_existing=False)
         return True

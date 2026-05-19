@@ -84,6 +84,34 @@ def drop_jobroles_skill_vector() -> None:
         conn.execute(text("ALTER TABLE jobroles DROP COLUMN skill_vector"))
 
 
+_COURSES_COLUMN_ALTER = {
+    "avg_rating": (
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS "
+        "avg_rating DOUBLE PRECISION NOT NULL DEFAULT 0.0"
+    ),
+    "skills": "ALTER TABLE courses ADD COLUMN IF NOT EXISTS skills TEXT",
+    "feature_vector": (
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS feature_vector JSONB"
+    ),
+}
+
+
+def ensure_courses_table_sync() -> None:
+    """Add columns introduced on the Course model to existing databases."""
+    inspector = inspect(engine)
+    if "courses" not in inspector.get_table_names():
+        return
+
+    column_names = {column["name"] for column in inspector.get_columns("courses")}
+    missing = set(_COURSES_COLUMN_ALTER) - column_names
+    if not missing:
+        return
+
+    with engine.begin() as conn:
+        for column_name in sorted(missing):
+            conn.execute(text(_COURSES_COLUMN_ALTER[column_name]))
+
+
 def drop_jobrole_skill_link_table() -> None:
     """Remove obsolete many-to-many table between jobroles and skills."""
     inspector = inspect(engine)

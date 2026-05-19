@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
 
@@ -69,10 +69,18 @@ class CourseBase(BaseModel):
     room: Optional[str] = None
     lecturer: Optional[str] = None
     occurrences: List[CourseOccurrenceSchema] = []
-    skills: List[SkillBase] = []
+    skills: List[SkillBase] = Field(default_factory=list, validation_alias="linked_skills")
+
+    @field_validator("skills", mode="before")
+    @classmethod
+    def coerce_skills(cls, value: object) -> object:
+        if value is None or isinstance(value, str):
+            return []
+        return value
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class StudentCourseHistoryCreate(BaseModel):
@@ -155,6 +163,13 @@ class CourseReviewCreate(BaseModel):
     is_anonymous: bool = False
 
 
+class CourseReviewSubmit(BaseModel):
+    course_code: int
+    rating: int = Field(ge=1, le=5)
+    review_text: str
+    is_anonymous: bool = False
+
+
 class CourseReviewResponse(BaseModel):
     id: int
     student_id: int
@@ -166,3 +181,17 @@ class CourseReviewResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CoursePipelineSeedResult(BaseModel):
+    status: str
+    courses_inserted: int
+    reviews_inserted: int
+    students_inserted: int
+    message: str
+
+
+class CoursePipelineStepResult(BaseModel):
+    status: str
+    updated_count: int
+    message: str

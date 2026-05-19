@@ -1,7 +1,8 @@
 import re
 from typing import List
 
-from dtos import CourseBase, RecommendationResponse
+from dtos import RecommendationResponse
+from services.course_service_impl import course_to_base
 from interfaces.recommendation_service import RecommendationService
 from repositories.course_repository import CourseRepository
 
@@ -72,7 +73,7 @@ class RecommendationServiceImpl(RecommendationService):
             if score > 0:
                 recommended.append(
                     RecommendationResponse(
-                        course=CourseBase.model_validate(course),
+                        course=course_to_base(course),
                         score=score,
                         explanation=explanation,
                     )

@@ -23,6 +23,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [submitError, setSubmitError] = useState('');
   
   const [metadata, setMetadata] = useState<{tracks: any[], job_roles: any[]}>({ tracks: [], job_roles: [] });
+  const [metadataError, setMetadataError] = useState('');
   const [courses, setCourses] = useState<any[]>([]);
   const [yearlyCoursesMap, setYearlyCoursesMap] = useState<Record<number, number[]>>({});
   
@@ -46,8 +47,12 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     api.getMetadata()
       .then(res => {
         setMetadata(res.data);
+        setMetadataError('');
       })
-      .catch(err => console.warn("Metadata not found."));
+      .catch(err => {
+        console.error('Failed to load metadata:', err);
+        setMetadataError('לא הצלחנו לטעון תפקידים ומסלולים. ודאי שהשרת רץ ורענני את הדף.');
+      });
 
     api.getYearlyMandatoryCourses()
       .then(res => setYearlyCoursesMap(res.data))
@@ -275,7 +280,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     </label>
                   ))
                 ) : (
-                  <p className="text-gray-400 text-sm">טוען תפקידים עדכניים מהשוק...</p>
+                  <p className="text-gray-400 text-sm">
+                    {metadataError || 'טוען תפקידים עדכניים מהשוק...'}
+                  </p>
                 )}
               </div>
             </div>

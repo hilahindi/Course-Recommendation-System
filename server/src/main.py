@@ -16,12 +16,14 @@ from database import (
     engine,
     drop_jobrole_skill_link_table,
     drop_jobroles_skill_vector,
+    ensure_courses_table_sync,
     ensure_industry_jobs_table_sync,
 )
 from repositories.course_repository import CourseRepository
 from services.market_role_service_impl import MarketRoleServiceImpl
 
 models.Base.metadata.create_all(bind=engine)
+ensure_courses_table_sync()
 ensure_industry_jobs_table_sync()
 drop_jobroles_skill_vector()
 drop_jobrole_skill_link_table()
@@ -56,6 +58,8 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(courses_router.router)
+app.include_router(courses_router.reviews_router)
+app.include_router(courses_router.course_pipeline_router)
 app.include_router(profile_router.router)
 app.include_router(recommendations_router.router)
 app.include_router(metadata_router.router)

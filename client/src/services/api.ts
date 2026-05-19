@@ -2,36 +2,78 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api/v1';
 
+const apiClient = axios.create({ baseURL: API_URL });
+
+apiClient.interceptors.request.use((config) => {
+  const stored = localStorage.getItem('user');
+  if (stored) {
+    try {
+      const user = JSON.parse(stored);
+      if (user?.user_id != null) {
+        config.headers['X-Student-Id'] = String(user.user_id);
+      }
+    } catch {
+      /* ignore invalid stored user */
+    }
+  }
+  return config;
+});
+
 export const api = {
   // Auth
-  login: async (data: any) => axios.post(`${API_URL}/login`, data),
-  register: async (data: any) => axios.post(`${API_URL}/register`, data),
+  login: async (data: { email: string; password: string }) =>
+    apiClient.post('/login', data),
+  register: async (data: { email: string; password: string; name: string }) =>
+    apiClient.post('/register', data),
 
   // Metadata
-  getMetadata: async () => axios.get(`${API_URL}/metadata/`),
+  getMetadata: async () => apiClient.get('/metadata/'),
 
   // Courses
-  getCourses: async () => axios.get(`${API_URL}/courses/`),
-  getYearlyMandatoryCourses: async () => axios.get(`${API_URL}/courses/yearly-mandatory`),
+  getCourses: async () => apiClient.get('/courses/'),
+  getYearlyMandatoryCourses: async () => apiClient.get('/courses/yearly-mandatory'),
 
   // Profile
-  getProfile: async (studentId: number) => axios.get(`${API_URL}/profile/${studentId}`),
-  updateProfile: async (studentId: number, data: any) => axios.put(`${API_URL}/profile/${studentId}`, data),
+  getProfile: async (studentId: number) => apiClient.get(`/profile/${studentId}`),
+  updateProfile: async (studentId: number, data: unknown) =>
+    apiClient.put(`/profile/${studentId}`, data),
 
   // History
-  getHistory: async (studentId: number) => axios.get(`${API_URL}/profile/${studentId}/history`),
-  addHistory: async (studentId: number, data: any) => axios.post(`${API_URL}/profile/${studentId}/history`, data),
-  addHistoryBulk: async (studentId: number, data: any) => axios.post(`${API_URL}/profile/${studentId}/history/bulk`, data),
+  getHistory: async (studentId: number) =>
+    apiClient.get(`/profile/${studentId}/history`),
+  addHistory: async (studentId: number, data: unknown) =>
+    apiClient.post(`/profile/${studentId}/history`, data),
+  addHistoryBulk: async (studentId: number, data: unknown) =>
+    apiClient.post(`/profile/${studentId}/history/bulk`, data),
 
   // Recommendations
-  getRecommendations: async (studentId: number) => axios.get(`${API_URL}/recommendations/${studentId}`),
+  getRecommendations: async (studentId: number) =>
+    apiClient.get(`/recommendations/${studentId}`),
 
   // Reviews
-  getCourseReviews: async (courseCode: number) => axios.get(`${API_URL}/courses/${courseCode}/reviews`),
-  createCourseReview: async (courseCode: number, studentId: number, data: any) => axios.post(`${API_URL}/courses/${courseCode}/reviews?student_id=${studentId}`, data),
+  getCourseReviews: async (courseCode: number) =>
+    apiClient.get(`/courses/${courseCode}/reviews`),
+  createCourseReview: async (
+    courseCode: number,
+    _studentId: number,
+    data: {
+      rating: number;
+      review_text: string;
+      is_anonymous?: boolean;
+    }
+  ) =>
+    apiClient.post('/reviews/submit', {
+      course_code: courseCode,
+      rating: data.rating,
+      review_text: data.review_text,
+      is_anonymous: data.is_anonymous ?? false,
+    }),
 
   // Schedule
-  getSchedule: (studentId: number) => axios.get(`${API_URL}/profile/${studentId}/schedule`),
-  addSchedule: (studentId: number, data: {course_code: number}) => axios.post(`${API_URL}/profile/${studentId}/schedule`, data),
-  removeSchedule: (studentId: number, courseCode: number) => axios.delete(`${API_URL}/profile/${studentId}/schedule/${courseCode}`)
+  getSchedule: (studentId: number) =>
+    apiClient.get(`/profile/${studentId}/schedule`),
+  addSchedule: (studentId: number, data: { course_code: number }) =>
+    apiClient.post(`/profile/${studentId}/schedule`, data),
+  removeSchedule: (studentId: number, courseCode: number) =>
+    apiClient.delete(`/profile/${studentId}/schedule/${courseCode}`),
 };

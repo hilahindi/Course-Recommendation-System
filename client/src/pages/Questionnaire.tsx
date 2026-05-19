@@ -14,8 +14,8 @@ export default function Questionnaire() {
   const [profile, setProfile] = useState({
     target_workload: 3,
     needs_flexible_attendance: false,
-    interested_track_ids: [] as int[],
-    interested_job_role_ids: [] as int[]
+    interested_track_ids: [] as number[],
+    interested_job_role_ids: [] as number[]
   });
 
   useEffect(() => {

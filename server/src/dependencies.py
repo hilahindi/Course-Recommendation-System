@@ -55,10 +55,23 @@ def get_course_service(
     return CourseServiceImpl(repository, pipeline)
 
 
+def get_adzuna_sync_service() -> AdzunaSyncService:
+    return AdzunaSyncServiceImpl()
+
+
+def get_job_pipeline_service(
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+    adzuna_service: AdzunaSyncService = Depends(get_adzuna_sync_service),
+) -> JobPipelineService:
+    return JobPipelineServiceImpl(embedding_service, adzuna_service)
+
+
 def get_recommendation_service(
     repository: CourseRepository = Depends(get_course_repository),
+    job_pipeline: JobPipelineService = Depends(get_job_pipeline_service),
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
 ) -> RecommendationService:
-    return RecommendationServiceImpl(repository)
+    return RecommendationServiceImpl(repository, job_pipeline, embedding_service)
 
 
 def get_market_role_service(
@@ -71,14 +84,3 @@ def get_profile_service(
     repository: CourseRepository = Depends(get_course_repository),
 ) -> ProfileService:
     return ProfileServiceImpl(repository)
-
-
-def get_adzuna_sync_service() -> AdzunaSyncService:
-    return AdzunaSyncServiceImpl()
-
-
-def get_job_pipeline_service(
-    embedding_service: EmbeddingService = Depends(get_embedding_service),
-    adzuna_service: AdzunaSyncService = Depends(get_adzuna_sync_service),
-) -> JobPipelineService:
-    return JobPipelineServiceImpl(embedding_service, adzuna_service)

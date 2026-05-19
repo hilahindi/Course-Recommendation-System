@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import List
 
-from dtos import RecommendationResponse
+from sqlalchemy.orm import Session
 
 
 class RecommendationService(ABC):
     """Application service contract for course recommendations."""
 
     @abstractmethod
-    def get_recommendations(self, student_id: int) -> List[RecommendationResponse]:
+    async def get_personalized_recommendations(
+        self, db_session: Session, student_id: int
+    ) -> list[dict]:
         ...

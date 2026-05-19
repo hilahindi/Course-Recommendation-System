@@ -46,9 +46,9 @@ export const api = {
   addHistoryBulk: async (studentId: number, data: unknown) =>
     apiClient.post(`/profile/${studentId}/history/bulk`, data),
 
-  // Recommendations
-  getRecommendations: async (studentId: number) =>
-    apiClient.get(`/recommendations/${studentId}`),
+  // Recommendations (student id from X-Student-Id header; may take up to ~2 min)
+  getRecommendations: async () =>
+    apiClient.post('/recommendations/get', undefined, { timeout: 120_000 }),
 
   // Reviews
   getCourseReviews: async (courseCode: number) =>

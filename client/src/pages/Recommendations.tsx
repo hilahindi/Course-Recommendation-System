@@ -39,19 +39,60 @@ export default function Recommendations() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [reviewCourse, setReviewCourse] = useState<any>(null);
 
+  const loadRecommendations = () => {
+    setLoading(true);
+    setError(null);
+    return api
+      .getRecommendations()
+      .then(res => setRecommendations(res.data))
+      .catch(err => {
+        console.error(err);
+        const detail = err?.response?.data?.detail;
+        setError(
+          typeof detail === 'string'
+            ? detail
+            : 'לא הצלחנו לטעון המלצות. ודאי שהשרת רץ ושסיימת את תהליך ההצטרפות.'
+        );
+      })
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
-    if (user) {
-      api.getRecommendations(user.user_id)
-        .then(res => setRecommendations(res.data))
-        .catch(err => console.error(err))
-        .finally(() => setLoading(false));
+    if (!user) {
+      setLoading(false);
+      return;
     }
+    loadRecommendations();
   }, [user]);
 
   if (loading) {
-    return <div className="text-center mt-20 text-xl animate-pulse">מנתח את הפרופיל שלך...</div>;
+    return (
+      <div className="text-center mt-20 space-y-3 px-4">
+        <p className="text-xl animate-pulse">מנתח את הפרופיל שלך...</p>
+        <p className="text-sm text-gray-500 max-w-md mx-auto">
+          מחשבים התאמה לתפקיד היעד שלך — זה עשוי לקחת כמה שניות.
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="glass-panel text-center p-12 max-w-lg mx-auto mt-12">
+        <h2 className="text-2xl mb-4 text-red-600">שגיאה בטעינת ההמלצות</h2>
+        <p className="text-gray-600 mb-6">{error}</p>
+        <button
+          type="button"
+          onClick={loadRecommendations}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-medium"
+        >
+          נסי שוב
+        </button>
+      </div>
+    );
   }
 
   const activeRecommendations = recommendations.filter(r => !dismissed.has(r.course.course_code));
@@ -99,11 +140,22 @@ export default function Recommendations() {
             </>
           ) : (
             <>
-              <h2 className="text-2xl mb-4">אנו זקוקים למידע נוסף</h2>
-              <p className="text-gray-500 mb-6">מלא את שאלון ההעדפות כדי לקבל המלצות מותאמות אישית.</p>
-              <Link to="/profile" className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/30">
-                התחל שאלון
-              </Link>
+              <h2 className="text-2xl mb-4">לא נמצאו המלצות כרגע</h2>
+              <p className="text-gray-500 mb-6">
+                ודאי שבחרת תפקיד יעד בהצטרפות, ושיש קורסי בחירה שלא סיימת עדיין.
+              </p>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={loadRecommendations}
+                  className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/30"
+                >
+                  רענן המלצות
+                </button>
+                <Link to="/profile" className="border border-gray-300 hover:border-emerald-400 px-6 py-3 rounded-lg font-medium transition-all">
+                  עריכת פרופיל
+                </Link>
+              </div>
             </>
           )}
         </div>
@@ -175,9 +227,23 @@ export default function Recommendations() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     למה הקורס הזה?
                   </h3>
-                  <p className="text-gray-700 text-sm leading-relaxed italic">
-                    "{rec.explanation}"
+                  <p className="text-gray-700 text-sm leading-relaxed mb-3 whitespace-pre-line">
+                    {rec.explanation}
                   </p>
+                  {rec.matching_skills?.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {rec.matching_skills.map((skill: string) => (
+                        <span
+                          key={skill}
+                          className="text-xs bg-white/80 text-emerald-800 px-2 py-1 rounded-full border border-emerald-300"
+                        >
+                          {skill.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-xs">אין חפיפת כישורים ישירה עם השוק.</p>
+                  )}
                 </div>
               </div>
             </div>

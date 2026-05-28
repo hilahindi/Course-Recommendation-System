@@ -1,0 +1,19 @@
+# Ignore Python virtual environments
+.venv/
+venv/
+server/.venv/
+server/venv/
+__pycache__/
+*.pyc
+
+# Ignore React dependencies
+client/node_modules/
+client/dist/
+
+# Ignore local environment variables and database files
+.env
+server/*.db
+
+# Course source files (local only — not committed)
+data/
+server/data/

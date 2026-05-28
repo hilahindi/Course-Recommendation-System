@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+python-jose[cryptography]
+pydantic
+pydantic[email]
+pdfplumber
+bcrypt
+anthropic
+apscheduler
+python-dotenv
+httpx
+numpy
+scikit-learn

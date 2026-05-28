@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "course_db (Docker)",
+      "Group": "Course Recommender",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "course_recommender",
+      "Username": "admin",
+      "SSLMode": "prefer"
+    }
+  }
+}

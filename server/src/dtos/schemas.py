@@ -63,6 +63,7 @@ class CourseBase(BaseModel):
     has_exam: bool = True
     final_task_description: Optional[str] = None
     track_id: Optional[int] = None
+    track_ids: List[int] = Field(default_factory=list)
     day_of_week: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None

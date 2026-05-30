@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-DEFAULT_COURSE_SKILLS = "Computer Science, Software Engineering"
-
 # Each entry: (keywords, skills). First matching rule wins — list more specific phrases first.
 COURSE_SKILL_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
     # 1. Core CS & Foundations
@@ -18,7 +16,7 @@ COURSE_SKILL_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
     ),
     (
         ("מבני נתונים",),
-        "Linked Lists, Binary Search Trees, AVL Trees, Hash Tables, Computational Complexity, Interview Prep",
+        "Linked Lists, Binary Search Trees, AVL Trees, Hash Tables, Heaps, Computational Complexity",
     ),
     (
         ("תכנון וניתוח אלגוריתמים",),
@@ -252,12 +250,6 @@ COURSE_SKILL_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
 
 def resolve_skills_from_course_title(title: str) -> str:
     """Return skills for a course title using case-insensitive keyword substring matching."""
-    if not title:
-        return DEFAULT_COURSE_SKILLS
+    from services.course_skills_by_name import resolve_skills_for_course_name
 
-    normalized_title = title.casefold()
-    for keywords, skills in COURSE_SKILL_RULES:
-        for keyword in keywords:
-            if keyword.casefold() in normalized_title:
-                return skills
-    return DEFAULT_COURSE_SKILLS
+    return resolve_skills_for_course_name(title or "")

@@ -23,7 +23,7 @@ _INDUSTRY_WEIGHT = 0.7
 _RATING_WEIGHT = 0.3
 _MAX_RATING = 5.0
 _TOP_N = 10
-_ELECTIVE_CATEGORIES = ("elective", "elective1")
+_ELECTIVE_CATEGORIES = ("elective", "elective1", "seminar")
 _MAX_MARKET_SKILLS_SHOWN = 6
 _MAX_MATCHING_SKILLS_SHOWN = 5
 

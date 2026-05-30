@@ -16,7 +16,31 @@ from services.course_pipeline_service import CoursePipelineService
 
 
 def course_to_base(course) -> CourseBase:
-    return CourseBase.model_validate(course)
+    from dtos import SkillBase
+    from services.course_skills_by_name import parse_skill_names
+
+    track_ids = [t.id for t in getattr(course, "tracks", []) or []]
+    prereq_codes = [p.course_code for p in getattr(course, "prerequisite_courses", []) or []]
+    linked = getattr(course, "linked_skills", None) or []
+    if linked:
+        skills_payload = [SkillBase.model_validate(s) for s in linked]
+    elif course.skills:
+        skills_payload = [
+            SkillBase(id=index, name=name)
+            for index, name in enumerate(parse_skill_names(course.skills), start=1)
+        ]
+    else:
+        skills_payload = []
+
+    base = CourseBase.model_validate(course)
+    return base.model_copy(
+        update={
+            "track_ids": track_ids,
+            "track_id": track_ids[0] if track_ids else base.track_id,
+            "prerequisite_course_codes": prereq_codes,
+            "skills": skills_payload,
+        }
+    )
 
 
 def submit_course_review(
@@ -50,10 +74,8 @@ class CourseServiceImpl(CourseService):
         self._pipeline = pipeline
 
     def list_courses(self) -> List[CourseBase]:
-        return [
-            CourseBase.model_validate(course)
-            for course in self._repository.get_courses()
-        ]
+        self._repository.ensure_track_course_links()
+        return [course_to_base(course) for course in self._repository.get_courses()]
 
     def get_yearly_mandatory_courses(self) -> Dict[int, List[int]]:
         return self._repository.get_yearly_mandatory_map()

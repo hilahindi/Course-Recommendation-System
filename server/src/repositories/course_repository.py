@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from dtos import (
@@ -26,11 +26,23 @@ class CourseRepository:
     # --- Courses ---
 
     def get_courses(self) -> List[models.Course]:
-        return self._db.query(models.Course).all()
+        return (
+            self._db.query(models.Course)
+            .options(
+                joinedload(models.Course.tracks),
+                joinedload(models.Course.prerequisite_courses),
+                joinedload(models.Course.linked_skills),
+            )
+            .all()
+        )
 
     def get_courses_by_categories(self, categories: List[str]) -> List[models.Course]:
         return (
             self._db.query(models.Course)
+            .options(
+                joinedload(models.Course.tracks),
+                joinedload(models.Course.prerequisite_courses),
+            )
             .filter(models.Course.category.in_(categories))
             .all()
         )
@@ -56,7 +68,22 @@ class CourseRepository:
     def get_course_by_code(self, course_code: int) -> Optional[models.Course]:
         return (
             self._db.query(models.Course)
+            .options(
+                joinedload(models.Course.tracks),
+                joinedload(models.Course.prerequisite_courses),
+            )
             .filter(models.Course.course_code == course_code)
+            .first()
+        )
+
+    def get_course_by_short_code(self, short_code: int) -> Optional[models.Course]:
+        """Match schedule/syllabus 5–6 digit codes against stored 7-digit course_code."""
+        return (
+            self._db.query(models.Course)
+            .filter(
+                (models.Course.course_code % 100000 == short_code)
+                | (models.Course.course_code == short_code)
+            )
             .first()
         )
 
@@ -81,6 +108,48 @@ class CourseRepository:
         if assignments:
             self._db.commit()
         return len(assignments)
+
+    def _get_or_create_skill(self, name: str) -> models.Skill:
+        skill = (
+            self._db.query(models.Skill).filter(models.Skill.name == name).first()
+        )
+        if not skill:
+            skill = models.Skill(name=name)
+            self._db.add(skill)
+            self._db.flush()
+        return skill
+
+    def sync_course_linked_skills(self, course: models.Course, skills_text: str) -> bool:
+        from services.course_skills_by_name import parse_skill_names
+
+        changed = False
+        if (course.skills or "") != skills_text:
+            course.skills = skills_text
+            changed = True
+
+        skill_objects = [
+            self._get_or_create_skill(name) for name in parse_skill_names(skills_text)
+        ]
+        existing_ids = {skill.id for skill in course.linked_skills}
+        new_ids = {skill.id for skill in skill_objects}
+        if existing_ids != new_ids:
+            course.linked_skills = skill_objects
+            changed = True
+        return changed
+
+    def ensure_course_skills_catalog(self) -> None:
+        """Apply catalog skills to all courses (text + linked Skill rows)."""
+        from services.course_skills_by_name import resolve_skills_for_course_name
+
+        changed = False
+        for course in self._db.query(models.Course).all():
+            skills_text = resolve_skills_for_course_name(course.name or "")
+            if not skills_text:
+                continue
+            if self.sync_course_linked_skills(course, skills_text):
+                changed = True
+        if changed:
+            self._db.commit()
 
     def get_courses_with_skills_text(self) -> List[models.Course]:
         return (
@@ -247,13 +316,28 @@ class CourseRepository:
     # --- Metadata ---
 
     _DEFAULT_TRACK_NAMES: tuple[str, ...] = (
-        "Web Development",
-        "Cyber Security",
-        "Data Science",
+        "ממשקי משתמש",
+        "סייבר",
+        "למידת מכונה",
     )
 
+    _LEGACY_TRACK_NAME_MAP: dict[str, str] = {
+        "Web Development": "ממשקי משתמש",
+        "Cyber Security": "סייבר",
+        "Data Science": "למידת מכונה",
+    }
+
     def ensure_default_tracks(self) -> None:
-        """Insert default tracks when the table is empty (e.g. after partial seed)."""
+        """Ensure canonical specialization tracks exist; migrate legacy English names."""
+        changed = False
+        for track in self.get_tracks():
+            new_name = self._LEGACY_TRACK_NAME_MAP.get(track.name)
+            if new_name and track.name != new_name:
+                track.name = new_name
+                changed = True
+        if changed:
+            self._db.commit()
+
         existing_names = {track.name for track in self.get_tracks()}
         added = False
         for name in self._DEFAULT_TRACK_NAMES:
@@ -261,6 +345,227 @@ class CourseRepository:
                 self._db.add(models.Track(name=name))
                 added = True
         if added:
+            self._db.commit()
+
+    def _build_curriculum_name_index(self) -> dict[str, models.Course]:
+        return {course.name: course for course in self._db.query(models.Course).all()}
+
+    def _resolve_curriculum_course(self, spec) -> Optional[models.Course]:
+        course = self.get_course_by_short_code(spec.code)
+        if course:
+            return course
+
+        for name in (spec.name, *spec.aliases):
+            course = (
+                self._db.query(models.Course)
+                .filter(models.Course.name == name)
+                .first()
+            )
+            if course:
+                return course
+
+        return (
+            self._db.query(models.Course)
+            .filter(models.Course.name.contains(spec.name))
+            .first()
+        )
+
+    def _resolve_prereq_course(
+        self, prereq_name: str, by_name: dict[str, models.Course]
+    ) -> Optional[models.Course]:
+        from services.elective_curriculum_catalog import PREREQ_NAME_ALIASES
+
+        for candidate in (prereq_name, PREREQ_NAME_ALIASES.get(prereq_name, prereq_name)):
+            if candidate in by_name:
+                return by_name[candidate]
+            course = (
+                self._db.query(models.Course)
+                .filter(models.Course.name == candidate)
+                .first()
+            )
+            if course:
+                by_name[candidate] = course
+                return course
+        return None
+
+    def _ensure_curriculum_specs(
+        self,
+        specs: tuple,
+        by_name: dict[str, models.Course],
+    ) -> None:
+        from services.mandatory_curriculum_catalog import (
+            credits_to_workload,
+            format_prerequisites,
+        )
+
+        changed = False
+
+        for spec in specs:
+            course = self._resolve_curriculum_course(spec)
+            if not course:
+                workload = credits_to_workload(spec.credits)
+                course = models.Course(
+                    course_code=spec.code,
+                    name=spec.name,
+                    category=spec.category,
+                    credits=spec.credits,
+                    workload=workload,
+                    semester_hours=workload,
+                    mandatory_attendance=False,
+                    prerequisites="",
+                )
+                self._db.add(course)
+                changed = True
+
+            by_name[spec.name] = course
+            for alias in spec.aliases:
+                by_name[alias] = course
+
+        if changed:
+            self._db.flush()
+
+        for spec in specs:
+            course = by_name.get(spec.name) or self._resolve_curriculum_course(spec)
+            if not course:
+                continue
+            by_name[spec.name] = course
+
+            workload = credits_to_workload(spec.credits)
+            prereq_text = format_prerequisites(spec)
+
+            if course.name != spec.name:
+                course.name = spec.name
+                changed = True
+            if course.category != spec.category:
+                course.category = spec.category
+                changed = True
+            if course.credits != spec.credits:
+                course.credits = spec.credits
+                changed = True
+            if course.workload != workload:
+                course.workload = workload
+                changed = True
+            if course.semester_hours != workload:
+                course.semester_hours = workload
+                changed = True
+            if (course.prerequisites or "") != prereq_text:
+                course.prerequisites = prereq_text
+                changed = True
+
+            and_prereqs: list[models.Course] = []
+            for prereq_name in spec.prereq_and:
+                prereq = self._resolve_prereq_course(prereq_name, by_name)
+                if prereq:
+                    and_prereqs.append(prereq)
+
+            existing_codes = {p.course_code for p in course.prerequisite_courses}
+            new_codes = {p.course_code for p in and_prereqs}
+            if existing_codes != new_codes:
+                course.prerequisite_courses = and_prereqs
+                changed = True
+
+        if changed:
+            self._db.commit()
+
+    def ensure_mandatory_curriculum(self) -> None:
+        """Upsert mandatory curriculum courses with credits, workload, and prerequisites."""
+        from services.mandatory_curriculum_catalog import MANDATORY_CURRICULUM
+
+        by_name = self._build_curriculum_name_index()
+        self._ensure_curriculum_specs(MANDATORY_CURRICULUM, by_name)
+
+    def ensure_elective_curriculum(self) -> None:
+        """Upsert seminar and elective courses with credits, workload, and prerequisites."""
+        from services.elective_curriculum_catalog import ELECTIVE_CURRICULUM
+
+        by_name = self._build_curriculum_name_index()
+        self._ensure_curriculum_specs(ELECTIVE_CURRICULUM, by_name)
+
+    def ensure_track_catalog_courses(self) -> None:
+        """Insert track elective courses that are missing from the courses table."""
+        from services.track_courses_catalog import TRACK_COURSES
+
+        changed = False
+        seen_codes: set[int] = set()
+        for entries in TRACK_COURSES.values():
+            for entry in entries:
+                if entry.code in seen_codes:
+                    continue
+                seen_codes.add(entry.code)
+
+                course = self.get_course_by_short_code(entry.code)
+                if not course:
+                    course = (
+                        self._db.query(models.Course)
+                        .filter(models.Course.name == entry.name)
+                        .first()
+                    )
+                if not course:
+                    self._db.add(
+                        models.Course(
+                            course_code=entry.code,
+                            name=entry.name,
+                            category="elective",
+                            workload=3,
+                            mandatory_attendance=False,
+                            prerequisites="",
+                        )
+                    )
+                    changed = True
+                elif course.name != entry.name:
+                    course.name = entry.name
+                    changed = True
+
+        if changed:
+            self._db.commit()
+
+    def ensure_track_course_links(self) -> None:
+        """Link catalog courses to each specialization track."""
+        from services.track_courses_catalog import TRACK_COURSES
+
+        self.ensure_default_tracks()
+        self.ensure_mandatory_curriculum()
+        self.ensure_elective_curriculum()
+        self.ensure_course_skills_catalog()
+        self.ensure_track_catalog_courses()
+        changed = False
+        for track_name, entries in TRACK_COURSES.items():
+            track = (
+                self._db.query(models.Track)
+                .filter(models.Track.name == track_name)
+                .first()
+            )
+            if not track:
+                continue
+
+            linked: list[models.Course] = []
+            for entry in entries:
+                course = self.get_course_by_short_code(entry.code)
+                if course:
+                    linked.append(course)
+
+            existing_codes = {c.course_code for c in track.courses}
+            new_codes = {c.course_code for c in linked}
+            if existing_codes != new_codes:
+                track.courses = linked
+                changed = True
+
+        if changed:
+            self._db.commit()
+
+        self.ensure_mandatory_attendance_rules()
+
+    def ensure_mandatory_attendance_rules(self) -> None:
+        """Apply attendance rules (seminars, intro SE, English, dev tools)."""
+        from services.course_attendance_rules import course_requires_mandatory_attendance
+
+        changed = False
+        for course in self._db.query(models.Course).all():
+            required = course_requires_mandatory_attendance(course.name)
+            if course.mandatory_attendance != required:
+                course.mandatory_attendance = required
+                changed = True
+        if changed:
             self._db.commit()
 
     def get_tracks(self) -> List[models.Track]:

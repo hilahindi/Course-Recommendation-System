@@ -45,11 +45,22 @@ course_prerequisite_link = Table(
     Column("prerequisite_code", Integer, ForeignKey("courses.course_code"), primary_key=True),
 )
 
+course_track_link = Table(
+    "course_track_link",
+    Base.metadata,
+    Column("course_code", Integer, ForeignKey("courses.course_code"), primary_key=True),
+    Column("track_id", Integer, ForeignKey("tracks.id"), primary_key=True),
+)
+
 
 class Track(Base):
     __tablename__ = "tracks"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
+
+    courses = relationship(
+        "Course", secondary=course_track_link, back_populates="tracks"
+    )
 
 
 class Course(Base):
@@ -87,6 +98,9 @@ class Course(Base):
         primaryjoin="Course.course_code==course_prerequisites.c.course_code",
         secondaryjoin="Course.course_code==course_prerequisites.c.prerequisite_code",
         backref="is_prerequisite_for",
+    )
+    tracks = relationship(
+        "Track", secondary=course_track_link, back_populates="courses"
     )
 
 

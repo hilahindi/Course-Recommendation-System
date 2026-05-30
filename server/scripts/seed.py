@@ -102,9 +102,9 @@ def seed_data():
     db.commit()
 
     # יצירת מסלולי ההתמחות
-    track_web = models.Track(name="Web Development")
-    track_cyber = models.Track(name="Cyber Security")
-    track_data = models.Track(name="Data Science")
+    track_web = models.Track(name="ממשקי משתמש")
+    track_cyber = models.Track(name="סייבר")
+    track_data = models.Track(name="למידת מכונה")
     db.add_all([track_web, track_cyber, track_data])
     db.commit() 
 
@@ -139,7 +139,12 @@ def seed_data():
         print(f"Success: Database has been seeded with {len(courses_to_insert)} unique courses from all folders!")
     else:
         print("No courses found. Please check your folder structure and paths.")
-    
+
+    from repositories.course_repository import CourseRepository
+
+    CourseRepository(db).ensure_track_course_links()
+    print("Linked specialization tracks to catalog courses.")
+
     db.close()
 
 if __name__ == "__main__":

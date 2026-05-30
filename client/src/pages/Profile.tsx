@@ -276,7 +276,7 @@ export default function Profile() {
 
           {metadata.tracks.length > 0 && (
             <div className="pt-4">
-              <label className="block text-sm text-gray-700 mb-3 font-medium">אשכול לימודים (התמחות)</label>
+              <label className="block text-sm text-gray-700 mb-3 font-bold">מסלול התמחות</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {metadata.tracks.map((track: any) => (
                   <label

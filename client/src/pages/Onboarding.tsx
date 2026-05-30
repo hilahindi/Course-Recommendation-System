@@ -59,6 +59,13 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
       .catch(err => console.error("Failed to load yearly courses:", err));
   }, []);
 
+  useEffect(() => {
+    if (step !== 4) return;
+    api.getYearlyMandatoryCourses()
+      .then((res) => setYearlyCoursesMap(res.data))
+      .catch((err) => console.error('Failed to refresh yearly courses:', err));
+  }, [step, courses.length]);
+
   // בדיקת תקינות לפי שלבים
   const isStepValid = () => {
     if (step === 1) return degree !== '';
@@ -98,11 +105,14 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   const handleAutoFill = (year: number) => {
     const newHistory = [...history];
-    const coursesForYear = yearlyCoursesMap[year] || [];
-    
-    coursesForYear.forEach(code => {
-      if (!newHistory.find(h => h.course_code === code)) {
-        newHistory.push({ course_code: code, grade: '' }); 
+    const knownCodes = new Set(courses.map((c) => c.course_code));
+    const coursesForYear = (yearlyCoursesMap[year] || []).filter((code) =>
+      knownCodes.has(code)
+    );
+
+    coursesForYear.forEach((code) => {
+      if (!newHistory.find((h) => h.course_code === code)) {
+        newHistory.push({ course_code: code, grade: '' });
       }
     });
     setHistory(newHistory);

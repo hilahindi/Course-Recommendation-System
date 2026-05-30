@@ -48,15 +48,20 @@ class CourseRepository:
         )
 
     def get_yearly_mandatory_map(self) -> dict[int, list[int]]:
-        mandatory_categories = ["year-A", "year-B", "year-C"]
-        courses = self.get_courses_by_categories(mandatory_categories)
-        category_to_year = {"year-A": 1, "year-B": 2, "year-C": 3}
+        """Return real DB course_code values for mandatory courses, grouped by study year."""
+        from services.mandatory_curriculum_catalog import (
+            MANDATORY_CURRICULUM,
+            YEAR_TO_CATEGORY,
+        )
+
         yearly_map: dict[int, list[int]] = defaultdict(list)
-        for course in courses:
-            year = category_to_year.get(course.category)
-            if year:
-                yearly_map[year].append(course.course_code)
-        return dict(yearly_map)
+        for spec in MANDATORY_CURRICULUM:
+            if spec.year not in YEAR_TO_CATEGORY:
+                continue
+            course = self._resolve_curriculum_course(spec)
+            if course and course.course_code not in yearly_map[spec.year]:
+                yearly_map[spec.year].append(course.course_code)
+        return {year: sorted(codes) for year, codes in yearly_map.items()}
 
     def get_course_reviews(self, course_code: int) -> List[models.CourseReview]:
         return (
@@ -351,10 +356,6 @@ class CourseRepository:
         return {course.name: course for course in self._db.query(models.Course).all()}
 
     def _resolve_curriculum_course(self, spec) -> Optional[models.Course]:
-        course = self.get_course_by_short_code(spec.code)
-        if course:
-            return course
-
         for name in (spec.name, *spec.aliases):
             course = (
                 self._db.query(models.Course)
@@ -363,6 +364,10 @@ class CourseRepository:
             )
             if course:
                 return course
+
+        by_code = self.get_course_by_short_code(spec.code)
+        if by_code and by_code.name == spec.name:
+            return by_code
 
         return (
             self._db.query(models.Course)
@@ -388,6 +393,14 @@ class CourseRepository:
                 return course
         return None
 
+    @staticmethod
+    def _curriculum_category(spec) -> str:
+        from services.mandatory_curriculum_catalog import YEAR_TO_CATEGORY, year_to_category
+
+        if getattr(spec, "year", 0) in YEAR_TO_CATEGORY:
+            return year_to_category(spec.year)
+        return spec.category
+
     def _ensure_curriculum_specs(
         self,
         specs: tuple,
@@ -401,13 +414,14 @@ class CourseRepository:
         changed = False
 
         for spec in specs:
+            category = self._curriculum_category(spec)
             course = self._resolve_curriculum_course(spec)
             if not course:
                 workload = credits_to_workload(spec.credits)
                 course = models.Course(
                     course_code=spec.code,
                     name=spec.name,
-                    category=spec.category,
+                    category=category,
                     credits=spec.credits,
                     workload=workload,
                     semester_hours=workload,
@@ -436,8 +450,8 @@ class CourseRepository:
             if course.name != spec.name:
                 course.name = spec.name
                 changed = True
-            if course.category != spec.category:
-                course.category = spec.category
+            if course.category != category:
+                course.category = category
                 changed = True
             if course.credits != spec.credits:
                 course.credits = spec.credits

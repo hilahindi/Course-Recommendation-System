@@ -73,6 +73,15 @@ class CourseRepository:
             .all()
         )
 
+    def bulk_update_course_skills(
+        self, assignments: list[tuple[models.Course, str]]
+    ) -> int:
+        for course, skills in assignments:
+            course.skills = skills
+        if assignments:
+            self._db.commit()
+        return len(assignments)
+
     def get_courses_with_skills_text(self) -> List[models.Course]:
         return (
             self._db.query(models.Course)

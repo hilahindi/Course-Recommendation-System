@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from interfaces.embedding_service import EmbeddingService
 from repositories.course_repository import CourseRepository
+from services.course_skills_catalog import resolve_skills_from_course_title
 
 SEED_STUDENT_EMAILS: tuple[tuple[str, str], ...] = (
     ("pipeline.reviewer1@seed.local", "Seed Reviewer One"),
@@ -152,17 +153,6 @@ SEED_COURSES: tuple[dict, ...] = (
     },
 )
 
-SKILL_RULES: tuple[tuple[str, str], ...] = (
-    ("database", "SQL, Databases, PostgreSQL"),
-    ("web", "JavaScript, React, Frontend, Backend, FastAPI"),
-    ("algorithms", "Python, Algorithms, Data Structures"),
-    ("cybersecurity", "Cybersecurity, Network Security"),
-    ("cloud", "Cloud Computing, AWS, DevOps, Distributed Systems"),
-)
-
-DEFAULT_SKILLS = "Computer Science, Software Engineering"
-
-
 class CoursePipelineService(ABC):
     """Contract for the academic course data pipeline."""
 
@@ -240,14 +230,14 @@ class CoursePipelineServiceImpl(CoursePipelineService):
 
     def extract_course_skills(self, db_session: Session) -> int:
         repository = CourseRepository(db_session)
-        updated = 0
-
-        for course in repository.get_courses_with_empty_skills():
-            skills = self._skills_from_course_name(course.name or "")
-            repository.update_course_skills(course, skills)
-            updated += 1
-
-        return updated
+        assignments = [
+            (
+                course,
+                resolve_skills_from_course_title(course.name or ""),
+            )
+            for course in repository.get_courses_for_pipeline()
+        ]
+        return repository.bulk_update_course_skills(assignments)
 
     def vectorize_courses(self, db_session: Session) -> int:
         repository = CourseRepository(db_session)
@@ -274,14 +264,6 @@ class CoursePipelineServiceImpl(CoursePipelineService):
             updated += 1
 
         return updated
-
-    @staticmethod
-    def _skills_from_course_name(name: str) -> str:
-        lowered = name.lower()
-        for keyword, skills in SKILL_RULES:
-            if keyword in lowered:
-                return skills
-        return DEFAULT_SKILLS
 
     @staticmethod
     def _vector_is_missing(vector: list[float] | None) -> bool:

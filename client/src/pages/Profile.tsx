@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -52,8 +52,6 @@ function yearLabel(y: number) {
 
 export default function Profile() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -167,39 +165,11 @@ export default function Profile() {
 
   return (
     <div className="w-full min-w-0 space-y-6 sm:space-y-8 animate-fade-in" dir="rtl">
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-l from-emerald-500 to-teal-500">
-            עריכת ההעדפות
-          </h1>
-          <p className="text-gray-500 mt-2">ניהול פרטים אקדמיים, מטרות קריירה וזמני למידה</p>
-        </div>
-        <div className="flex gap-2">
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-all shadow-md shadow-emerald-500/20"
-            >
-              עריכת העדפות
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={handleCancel}
-                className="text-gray-500 hover:text-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 bg-white transition-colors"
-              >
-                ביטול
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || calculateTotalWorkload() <= 0}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50"
-              >
-                {saving ? 'שומר...' : 'שמור שינויים'}
-              </button>
-            </>
-          )}
-        </div>
+      <header>
+        <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-l from-emerald-500 to-teal-500">
+            פרופיל אישי
+        </h1>
+        <p className="text-gray-500 mt-2">ניהול פרטים אקדמיים, מטרות קריירה וזמני למידה</p>
       </header>
 
       {/* Summary cards — same layout as Dashboard "ההעדפות שלך" */}
@@ -416,23 +386,39 @@ export default function Profile() {
         {!isEditing && (
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-blue-800 text-sm text-center font-medium">
             שינוי ההעדפות ישפיע באופן מיידי על דירוג הקורסים המומלצים עבורך.{' '}
-            <Link to="/history" className="text-emerald-700 hover:underline font-semibold">
-              לעריכת היסטוריית קורסים →
+            <Link to="/recommendations" className="text-emerald-700 hover:underline font-semibold">
+              לעמוד ההמלצות →
             </Link>
           </div>
         )}
       </div>
 
-      {isEditing && (
-        <div className="flex justify-end">
+      <div className="flex justify-end gap-2 pt-2 w-full">
+        {!isEditing ? (
           <button
-            onClick={() => navigate('/')}
-            className="text-gray-500 hover:text-gray-800 text-sm"
+            onClick={() => setIsEditing(true)}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-all shadow-md shadow-emerald-500/20 w-full sm:w-auto"
           >
-            חזרה ללוח הבקרה
+            עריכת העדפות
           </button>
-        </div>
-      )}
+        ) : (
+          <>
+            <button
+              onClick={handleCancel}
+              className="text-gray-500 hover:text-gray-800 px-4 py-2.5 rounded-lg border border-gray-200 bg-white transition-colors flex-1 sm:flex-none"
+            >
+              ביטול
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || calculateTotalWorkload() <= 0}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-medium transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 flex-1 sm:flex-none"
+            >
+              {saving ? 'שומר...' : 'שמור שינויים'}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

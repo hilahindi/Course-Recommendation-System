@@ -25,7 +25,7 @@ function mobileNavLinkClass({ isActive }: { isActive: boolean }) {
 }
 
 const NAV_ITEMS = [
-  { to: '/profile', label: 'העדפות' },
+  { to: '/profile', label: 'פרופיל' },
   { to: '/recommendations', label: 'המלצות' },
   { to: '/explorer', label: 'חיפוש קורסים' },
   { to: '/history', label: 'היסטוריה שלי' },

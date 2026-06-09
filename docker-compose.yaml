@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: course_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: course_recommender
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./server
+    container_name: course_backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://admin:password123@db:5432/course_recommender
+      CORS_ORIGINS: http://13.61.32.213,http://13.61.32.213:80
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-demo_api_key}
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-7f26efa5}
+      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-968151b36a9bb504bade07d20340585a}
+      ADZUNA_COUNTRY: ${ADZUNA_COUNTRY:-gb}
+      ADZUNA_SEARCH_WHAT: ${ADZUNA_SEARCH_WHAT:-developer}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./client
+    container_name: course_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

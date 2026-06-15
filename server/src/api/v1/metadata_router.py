@@ -24,8 +24,6 @@ def read_metadata(
     db: Session = Depends(get_db),
 ):
     try:
-        repository.ensure_default_tracks()
-        repository.ensure_track_course_links()
         tracks_db = repository.get_tracks()
         job_roles_db = repository.get_job_roles()
 

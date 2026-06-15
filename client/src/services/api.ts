@@ -69,6 +69,9 @@ export const api = {
       is_anonymous: data.is_anonymous ?? false,
     }),
 
+  // Roadmap
+  getRoadmap: async () => apiClient.get('/recommendations/roadmap'),
+
   // Schedule
   getSchedule: (studentId: number) =>
     apiClient.get(`/profile/${studentId}/schedule`),

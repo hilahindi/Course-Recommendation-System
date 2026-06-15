@@ -22,6 +22,7 @@ from services.job_pipeline_service_impl import JobPipelineServiceImpl
 from services.market_role_service_impl import MarketRoleServiceImpl
 from services.profile_service_impl import ProfileServiceImpl
 from services.recommendation_service_impl import RecommendationServiceImpl
+from services.roadmap_service_impl import RoadmapServiceImpl
 
 
 def get_current_student_id(
@@ -84,3 +85,9 @@ def get_profile_service(
     repository: CourseRepository = Depends(get_course_repository),
 ) -> ProfileService:
     return ProfileServiceImpl(repository)
+
+
+def get_roadmap_service(
+    repository: CourseRepository = Depends(get_course_repository),
+) -> RoadmapServiceImpl:
+    return RoadmapServiceImpl(repository)

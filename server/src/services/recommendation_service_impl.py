@@ -73,6 +73,9 @@ class RecommendationServiceImpl(RecommendationService):
             if course.course_code in passed_course_codes:
                 continue
 
+            if not self._prerequisites_met(course, passed_course_codes):
+                continue
+
             course_vector = self._course_feature_vector(course)
             if course_vector is None:
                 continue
@@ -295,3 +298,10 @@ class RecommendationServiceImpl(RecommendationService):
     def _passed_course_codes(self, student_id: int) -> set[int]:
         history = self._repository.get_student_history(student_id)
         return {h.course_code for h in history if h.grade >= _PASSING_GRADE}
+
+    @staticmethod
+    def _prerequisites_met(course: models.Course, passed_codes: set[int]) -> bool:
+        return all(
+            prereq.course_code in passed_codes
+            for prereq in course.prerequisite_courses
+        )

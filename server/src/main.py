@@ -30,6 +30,13 @@ ensure_industry_jobs_table_sync()
 drop_jobroles_skill_vector()
 drop_jobrole_skill_link_table()
 
+# Sync curriculum catalog to DB once at startup
+_startup_db = SessionLocal()
+try:
+    CourseRepository(_startup_db).ensure_track_course_links()
+finally:
+    _startup_db.close()
+
 app = FastAPI()
 
 

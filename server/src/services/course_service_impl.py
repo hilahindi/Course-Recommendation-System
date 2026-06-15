@@ -74,11 +74,9 @@ class CourseServiceImpl(CourseService):
         self._pipeline = pipeline
 
     def list_courses(self) -> List[CourseBase]:
-        self._repository.ensure_track_course_links()
         return [course_to_base(course) for course in self._repository.get_courses()]
 
     def get_yearly_mandatory_courses(self) -> Dict[int, List[int]]:
-        self._repository.ensure_mandatory_curriculum()
         return self._repository.get_yearly_mandatory_map()
 
     def get_reviews(self, course_code: int) -> List[CourseReviewResponse]:

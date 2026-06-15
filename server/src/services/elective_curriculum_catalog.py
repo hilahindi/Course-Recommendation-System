@@ -48,10 +48,8 @@ ELECTIVE_CURRICULUM: tuple[CurriculumCourseSpec, ...] = (
         category="seminar",
         prereq_and=("עקרונות שפות תכנות",),
     ),
-    # --- קורסי עזר / קדם שלא הוגדרו בחובה ---
-    CurriculumCourseSpec(92100, "מבוא לתכנות מערכות", 3, category="elective"),
+    # --- קורסי עזר / קדם ---
     CurriculumCourseSpec(92101, "למידה חישובית", 3, category="elective"),
-    CurriculumCourseSpec(92102, "אלגוריתמים מתקדמים וסיבוכיות", 3, category="elective"),
     CurriculumCourseSpec(92103, "הסקה סטטיסטית", 3, category="elective"),
     # --- קורסי בחירה ---
     CurriculumCourseSpec(
@@ -298,10 +296,21 @@ ELECTIVE_CURRICULUM: tuple[CurriculumCourseSpec, ...] = (
         prereq_or_groups=(("סטטיסטיקה", "הסקה סטטיסטית"),),
         prereq_and=("תכנות מונחה עצמים",),
     ),
-    CurriculumCourseSpec(
-        19101,
-        "מבוא לבינה מלאכותית",
-        3.5,
-        category="elective",
-    ),
+    # --- קורסי בחירה נוספים ---
+    CurriculumCourseSpec(92150, "אבטחת ממשקי משתמש ופרטיות", 3, category="elective",
+                         prereq_and=("תכנות מונחה עצמים",)),
+    CurriculumCourseSpec(92151, "פיתוח תוכנה מונחה בינה מלאכותית למפתחים", 3, category="elective",
+                         prereq_and=("תכנות מונחה עצמים",)),
+    # --- סמינר נוסף ---
+    CurriculumCourseSpec(92006, "סמינר בשיטות פיתוח", 2.5, category="seminar",
+                         prereq_and=("מבוא להנדסת תוכנה",)),
+    # --- elective1 ---
+    CurriculumCourseSpec(264011, "מבוא לחקר ביצועים", 3, category="elective1"),
+    CurriculumCourseSpec(264012, "מודלים סטוכסטיים", 3, category="elective1",
+                         prereq_and=("מבוא להסתברות",)),
+    CurriculumCourseSpec(264021, "תורת המשחקים", 3, category="elective1",
+                         prereq_and=("מבוא להסתברות",)),
+    CurriculumCourseSpec(264022, "כריית מידע", 3, category="elective1",
+                         prereq_and=("בסיסי נתונים", "מבוא להסתברות")),
+    CurriculumCourseSpec(264023, "שיטות באופטימיזציה וייצור מבוזר", 3, category="elective1"),
 )

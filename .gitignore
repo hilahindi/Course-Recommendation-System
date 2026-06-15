@@ -17,3 +17,7 @@ server/*.db
 # Course source files (local only — not committed)
 data/
 server/data/
+
+# One-time migration scripts (already ran, not needed in repo)
+server/src/add_missing_courses.py
+server/src/fix_duplicate_track.py

@@ -472,10 +472,26 @@ class CourseRepository:
                 if prereq:
                     and_prereqs.append(prereq)
 
-            existing_codes = {p.course_code for p in course.prerequisite_courses}
+            # Query DB directly to avoid stale session cache on relationship
+            from sqlalchemy import text as _text
+            existing_codes = {
+                row[0] for row in self._db.execute(
+                    _text("SELECT prerequisite_code FROM course_prerequisites WHERE course_code = :c"),
+                    {"c": course.course_code},
+                ).fetchall()
+            }
             new_codes = {p.course_code for p in and_prereqs}
-            if existing_codes != new_codes:
-                course.prerequisite_courses = and_prereqs
+            missing_codes = new_codes - existing_codes
+            if missing_codes:
+                for prereq_course in and_prereqs:
+                    if prereq_course.course_code in missing_codes:
+                        self._db.execute(
+                            _text(
+                                "INSERT INTO course_prerequisites (course_code, prerequisite_code)"
+                                " VALUES (:c, :p) ON CONFLICT DO NOTHING"
+                            ),
+                            {"c": course.course_code, "p": prereq_course.course_code},
+                        )
                 changed = True
 
         if changed:

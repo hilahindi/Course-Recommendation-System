@@ -105,13 +105,13 @@ export default function Recommendations() {
     });
   };
 
-  const handleAdd = async (courseCode: number) => {
+  const handleAdd = async (courseCode: number, courseName: string) => {
     if (!user) return;
     try {
       await api.addSchedule(user.user_id, { course_code: courseCode });
-      alert(`קורס ${courseCode} נוסף למערכת השעות שלך!`);
+      alert(`"${courseName}" נוסף להרשימה שלך!`);
     } catch (e) {
-      alert("שגיאה בהוספת הקורס למערכת השעות.");
+      alert('שגיאה בהוספה להרשימה.');
     }
   };
 
@@ -223,10 +223,10 @@ export default function Recommendations() {
 
                   <div className="mt-auto flex gap-3 pt-4">
                     <button 
-                      onClick={() => handleAdd(rec.course.course_code)}
+                      onClick={() => handleAdd(rec.course.course_code, rec.course.name)}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-md shadow-emerald-500/20"
                     >
-                      הוסף למערכת השעות
+                      הוסף להרשימה שלי
                     </button>
                   </div>
                 </div>

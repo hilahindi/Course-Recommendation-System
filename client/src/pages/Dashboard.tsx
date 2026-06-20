@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { Link } from 'react-router-dom';
+import CourseDetailModal from '../components/CourseDetailModal';
+import ReviewModal from '../components/ReviewModal';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -10,6 +12,8 @@ export default function Dashboard() {
   const [topRecommendation, setTopRecommendation] = useState<any>(null);
   const [schedule, setSchedule] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [reviewCourse, setReviewCourse] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -101,7 +105,7 @@ export default function Dashboard() {
           <div className="relative z-10 h-full flex flex-col justify-between">
             <div>
               <div className="inline-block px-3 py-1 bg-yellow-500/20 text-yellow-500 rounded-full text-xs font-semibold mb-4 border border-yellow-500/30">
-                #1 המלצה מובילה לסמסטר הבא
+                #1 המלצה מובילה
               </div>
               {topRecommendation ? (
                 <>
@@ -115,7 +119,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-                      עומס: {topRecommendation.course.workload}/5
+                      עומס: {topRecommendation.course.workload} שעות בשבוע
                     </div>
                   </div>
                 </>
@@ -166,10 +170,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* My Schedule (System) */}
+      {/* My List */}
       <div className="glass-panel p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <h2 className="text-lg sm:text-xl font-semibold">מערכת השעות שלי</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">הרשימה שלי</h2>
           <Link to="/explorer" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
             חיפוש קורסים ←
           </Link>
@@ -178,17 +182,26 @@ export default function Dashboard() {
         {schedule.length > 0 ? (
           <div className="space-y-3">
             {schedule.map((item, index) => (
-              <div key={index} className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <div
+                key={index}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedCourse(item.course)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedCourse(item.course);
+                  }
+                }}
+                className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-4 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors"
+              >
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-gray-800">{item.course.name} <span className="text-sm text-gray-500 font-normal">({item.course_code})</span></h3>
-                  <div className="text-sm text-gray-600 mt-1 flex flex-col sm:flex-row flex-wrap gap-1 sm:gap-4">
-                    <span><strong className="text-emerald-600">יום:</strong> {item.course.day_of_week || 'טרם נקבע'}</span>
-                    <span><strong className="text-emerald-600">שעות:</strong> {item.course.start_time || '?'} - {item.course.end_time || '?'}</span>
-                    <span><strong className="text-emerald-600">חדר:</strong> {item.course.room || 'טרם נקבע'}</span>
-                  </div>
+                  <h3 className="font-semibold text-gray-800">{item.course.name}</h3>
                 </div>
                 <button 
-                  onClick={async () => {
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
                     if (!user) return;
                     await api.removeSchedule(user.user_id, item.course_code);
                     setSchedule(schedule.filter(s => s.course_code !== item.course_code));
@@ -202,13 +215,29 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="text-center py-8 bg-gray-50 border border-gray-200 rounded-xl">
-            <p className="text-gray-500 mb-4">עדיין לא הוספת קורסים למערכת השעות שלך.</p>
+            <p className="text-gray-500 mb-4">עדיין לא הוספת קורסים להרשימה שלך.</p>
             <Link to="/recommendations" className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-medium transition-all shadow-md shadow-emerald-500/20">
               מצא קורסים
             </Link>
           </div>
         )}
       </div>
+
+      {selectedCourse && (
+        <CourseDetailModal
+          course={selectedCourse}
+          onClose={() => setSelectedCourse(null)}
+          onOpenReviews={() => {
+            setReviewCourse(selectedCourse);
+            setSelectedCourse(null);
+          }}
+          showAddToList={false}
+        />
+      )}
+
+      {reviewCourse && (
+        <ReviewModal course={reviewCourse} onClose={() => setReviewCourse(null)} />
+      )}
     </div>
   );
 }

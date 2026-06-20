@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { to: '/profile', label: 'פרופיל' },
   { to: '/recommendations', label: 'המלצות' },
   { to: '/explorer', label: 'חיפוש קורסים' },
-  { to: '/history', label: 'היסטוריה שלי' },
+  { to: '/history', label: 'המסלול שלי' },
 ] as const;
 
 export default function Navbar() {

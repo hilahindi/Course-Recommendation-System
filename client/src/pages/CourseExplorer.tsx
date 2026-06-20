@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ReviewModal from '../components/ReviewModal';
+import CourseDetailModal from '../components/CourseDetailModal';
 
 function parsePrerequisiteItems(text: string): string[] {
   if (!text?.trim()) return [];
@@ -172,102 +173,6 @@ function PrerequisitesBox({ prerequisites, compact }: { prerequisites: string; c
   );
 }
 
-function CourseModal({ course, onClose, onOpenReviews }: { course: any, onClose: () => void, onOpenReviews: () => void }) {
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.getCourseReviews(course.course_code)
-      .then(res => setReviews(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [course]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/40 backdrop-blur-sm animate-fade-in">
-      <div className="glass-panel w-full max-w-3xl max-h-[90vh] overflow-y-auto relative !p-8 !bg-white backdrop-blur-none shadow-2xl border border-gray-200">
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 bg-gray-100 hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-all"
-        >
-          ✕
-        </button>
-        
-        <div className="mb-6 border-b border-gray-200 pb-6 text-center">
-          <span className="inline-block bg-blue-500/20 px-3 py-1 rounded text-sm text-emerald-700 font-mono border border-blue-500/30 mb-3">
-            {course.course_code}
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4">{course.name}</h2>
-          <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto w-full">
-            <CourseStatBox label='נ"ז' value={course.credits} tone="emerald" />
-            <CourseStatBox label="שעות" value={course.workload} sub="בשבוע" tone="blue" />
-            <CourseStatBox
-              label="נוכחות"
-              value={course.mandatory_attendance ? 'חובה' : 'גמישה'}
-              tone={course.mandatory_attendance ? 'rose' : 'slate'}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="min-h-[9rem] rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 flex flex-col items-center text-center">
-            <h3 className="text-sm font-semibold text-emerald-700 mb-3">כישורים נרכשים</h3>
-            {course.skills?.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 justify-center">
-                {course.skills.map((s: any) => (
-                  <span
-                    key={s.id}
-                    className="inline-block rounded-lg border border-emerald-200 bg-white text-gray-700 text-xs px-2.5 py-1.5"
-                  >
-                    {s.name}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-400 text-sm italic text-center">לא צוינו כישורים ספציפיים.</p>
-            )}
-          </div>
-
-          {course.prerequisites ? (
-            <PrerequisitesBox prerequisites={course.prerequisites} />
-          ) : (
-            <div className="min-h-[9rem] rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 flex items-center justify-center text-sm text-gray-500 text-center">
-              אין דרישות קדם לקורס זה
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="flex justify-between items-center mb-4 border-b border-emerald-500/20 pb-2">
-            <h3 className="text-lg font-semibold text-emerald-700">ביקורות סטודנטים</h3>
-            <button onClick={onOpenReviews} className="text-sm bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded transition-colors shadow">
-              קרא / כתוב ביקורות
-            </button>
-          </div>
-          {loading ? (
-            <div className="text-center text-gray-400 text-sm">טוען ביקורות...</div>
-          ) : reviews.length === 0 ? (
-            <div className="text-center text-gray-400 text-sm italic bg-gray-100 p-6 rounded-xl border border-gray-200">אין ביקורות עדיין. היה הראשון לכתוב!</div>
-          ) : (
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-              {reviews.map((r, i) => (
-                <div key={i} className="bg-gray-100 rounded-xl p-4 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-yellow-400">{'⭐'.repeat(r.rating)}</span>
-                    <span className="text-gray-400 text-xs">{'⭐'.repeat(5 - r.rating)}</span>
-                    <span className="ml-auto text-xs text-emerald-600 font-medium">{r.student_name || `סטודנט #${r.student_id}`}</span>
-                  </div>
-                  <p className="text-sm text-gray-500">{r.review_text}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function CourseExplorer() {
   const { user } = useAuth();
   const location = useLocation();
@@ -285,6 +190,17 @@ export default function CourseExplorer() {
 
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [reviewCourse, setReviewCourse] = useState<any>(null);
+
+  const handleAddToList = async (course: { course_code: number; name: string }) => {
+    if (!user) return;
+    try {
+      await api.addSchedule(user.user_id, { course_code: course.course_code });
+      alert(`"${course.name}" נוסף להרשימה שלך!`);
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בהוספה להרשימה.');
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -485,13 +401,14 @@ export default function CourseExplorer() {
       )}
 
       {selectedCourse && (
-        <CourseModal 
-          course={selectedCourse} 
-          onClose={() => setSelectedCourse(null)} 
+        <CourseDetailModal
+          course={selectedCourse}
+          onClose={() => setSelectedCourse(null)}
           onOpenReviews={() => {
             setReviewCourse(selectedCourse);
             setSelectedCourse(null);
           }}
+          onAddToList={handleAddToList}
         />
       )}
 

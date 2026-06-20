@@ -265,7 +265,7 @@ class RecommendationServiceImpl(RecommendationService):
         target_role: str,
         in_track: bool,
         vector_similarity: float,
-        rating_normalized: float,
+        avg_rating: float,
         prerequisites_met: bool,
         missing_prerequisites: list[dict],
         has_track_preference: bool,
@@ -283,9 +283,12 @@ class RecommendationServiceImpl(RecommendationService):
                 lines.append("שייך למקבץ הלימודים שבחרת בפרופיל.")
             else:
                 lines.append("לא שייך למקבץ הלימודים שבחרת — מומלץ בעיקר בזכות התאמה לשוק.")
+        if avg_rating > 0:
+            rating_line = f"דירוג ממוצע של {avg_rating:.1f}/5 כוכבים מביקורות סטודנטים."
+        else:
+            rating_line = "עדיין אין דירוגים מביקורות סטודנטים."
         lines.append(
-            f"{round(vector_similarity * 100)}% התאמה לביקושי כישורים בשוק העבודה "
-            f"ו-{round(rating_normalized * 100)}% מדירוגי הסטודנטים."
+            f"{round(vector_similarity * 100)}% התאמה לביקושי כישורים בשוק העבודה. {rating_line}"
         )
         if not prerequisites_met and missing_prerequisites:
             names = ", ".join(item["name"] for item in missing_prerequisites)
@@ -315,7 +318,7 @@ class RecommendationServiceImpl(RecommendationService):
             target_role,
             in_track,
             vector_similarity,
-            rating_normalized,
+            course.avg_rating or 0.0,
             prerequisites_met,
             missing_prerequisites,
             has_track_preference,

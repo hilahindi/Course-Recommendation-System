@@ -267,11 +267,6 @@ export default function CourseHistory() {
           </div>
         </div>
 
-        {summary.seminar_path && (
-          <p className="mt-5 text-center text-teal-800 font-medium">
-            {summary.seminar_path.target_name}
-          </p>
-        )}
       </div>
 
       {/* Add completed courses */}

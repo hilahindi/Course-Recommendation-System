@@ -8,7 +8,7 @@ import ReviewModal from '../components/ReviewModal';
 export default function Dashboard() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [roadmapSummary, setRoadmapSummary] = useState<any>(null);
   const [topRecommendation, setTopRecommendation] = useState<any>(null);
   const [schedule, setSchedule] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,14 +19,14 @@ export default function Dashboard() {
     if (!user) return;
     const fetchData = async () => {
       try {
-        const [profileRes, historyRes, recsRes, schedRes] = await Promise.all([
+        const [profileRes, recsRes, schedRes, roadmapRes] = await Promise.all([
           api.getProfile(user.user_id),
-          api.getHistory(user.user_id),
           api.getRecommendations(user.user_id),
-          api.getSchedule(user.user_id)
+          api.getSchedule(user.user_id),
+          api.getRoadmap(),
         ]);
         setProfile(profileRes.data);
-        setHistory(historyRes.data);
+        setRoadmapSummary(roadmapRes.data?.summary ?? null);
         setSchedule(schedRes.data);
         if (recsRes.data && recsRes.data.length > 0) {
           setTopRecommendation(recsRes.data[0]);
@@ -48,10 +48,16 @@ export default function Dashboard() {
     );
   }
 
-  // Assuming ~120 credits for degree, each course roughly 3 credits for visual purposes
-  const totalCredits = 120;
-  const earnedCredits = history.length * 3;
-  const progressPercent = Math.min(Math.round((earnedCredits / totalCredits) * 100), 100);
+  const summary = roadmapSummary ?? {};
+  const progressPercent = Math.min(summary.completion_pct ?? 0, 100);
+  const totalCourses =
+    (summary.total_mandatory ?? 0) +
+    (summary.electives_needed ?? 0) +
+    (summary.seminars_needed ?? 0);
+  const passedCourses =
+    (summary.passed_mandatory ?? 0) +
+    (summary.passed_electives ?? 0) +
+    (summary.passed_seminars ?? 0);
 
   return (
     <div className="w-full min-w-0 space-y-6 sm:space-y-8 animate-fade-in">
@@ -93,7 +99,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-sm">
-              <span className="text-gray-800 font-medium">{earnedCredits}</span> / {totalCredits} נקודות זכות
+              <span className="text-gray-800 font-medium">{passedCourses}</span> / {totalCourses} קורסים
             </p>
           </div>
         </div>

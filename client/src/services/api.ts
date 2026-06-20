@@ -70,6 +70,16 @@ export const api = {
       review_text: data.review_text,
       is_anonymous: data.is_anonymous ?? false,
     }),
+  createCourseReviewsBulk: async (
+    reviews: Array<{
+      course_code: number;
+      rating: number;
+      review_text: string;
+      is_anonymous?: boolean;
+    }>
+  ) => apiClient.post('/reviews/bulk', { reviews }),
+  seedAllCourseReviews: async () => apiClient.post('/reviews/seed-all'),
+  deleteAllCourseReviews: async () => apiClient.delete('/reviews/all'),
 
   // Roadmap
   getRoadmap: async () => apiClient.get('/recommendations/roadmap'),

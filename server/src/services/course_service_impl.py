@@ -7,8 +7,11 @@ from dtos import (
     CourseBase,
     CoursePipelineSeedResult,
     CoursePipelineStepResult,
+    CourseReviewBulkCreate,
     CourseReviewCreate,
+    CourseReviewDeleteAllResult,
     CourseReviewResponse,
+    CourseReviewSeedResult,
 )
 from interfaces.course_service import CourseService
 from repositories.course_repository import CourseRepository
@@ -106,6 +109,48 @@ class CourseServiceImpl(CourseService):
             is_anonymous,
         )
         return self._to_review_response(saved)
+
+    def create_reviews_bulk(
+        self, student_id: int, bulk: CourseReviewBulkCreate
+    ) -> List[CourseReviewResponse]:
+        saved: List[CourseReviewResponse] = []
+        for item in bulk.reviews:
+            if not self._repository.get_course_by_code(item.course_code):
+                raise ValueError(f"Course {item.course_code} not found")
+            review = self._repository.create_course_review(
+                student_id,
+                CourseReviewCreate(
+                    course_code=item.course_code,
+                    rating=item.rating,
+                    review_text=item.review_text,
+                    is_anonymous=item.is_anonymous,
+                ),
+            )
+            saved.append(self._to_review_response(review))
+
+        if saved:
+            avg = self._repository.get_average_ratings_by_course()
+            for response in saved:
+                self._repository.update_course_avg_rating(
+                    response.course_code,
+                    avg.get(response.course_code, 0.0),
+                )
+
+        return saved
+
+    def seed_all_course_reviews(
+        self, db_session: Session
+    ) -> CourseReviewSeedResult:
+        result = self._pipeline.seed_reviews_for_all_courses(db_session)
+        return CourseReviewSeedResult(**result)
+
+    def delete_all_reviews(self) -> CourseReviewDeleteAllResult:
+        deleted = self._repository.delete_all_course_reviews()
+        return CourseReviewDeleteAllResult(
+            status="success",
+            reviews_deleted=deleted,
+            message=f"Deleted {deleted} review(s).",
+        )
 
     def run_pipeline_seed(self, db_session: Session) -> CoursePipelineSeedResult:
         result = self._pipeline.seed_initial_courses_and_reviews(db_session)

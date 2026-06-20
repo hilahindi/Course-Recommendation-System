@@ -8,8 +8,11 @@ from dtos import (
     CourseBase,
     CoursePipelineSeedResult,
     CoursePipelineStepResult,
+    CourseReviewBulkCreate,
     CourseReviewCreate,
+    CourseReviewDeleteAllResult,
     CourseReviewResponse,
+    CourseReviewSeedResult,
     CourseReviewSubmit,
 )
 from interfaces.course_service import CourseService
@@ -66,6 +69,55 @@ def submit_review(
         review_text=body.review_text,
         is_anonymous=body.is_anonymous,
     )
+
+
+@reviews_router.post("/bulk", response_model=List[CourseReviewResponse])
+def create_reviews_bulk(
+    body: CourseReviewBulkCreate,
+    student_id: int = Depends(get_current_student_id),
+    course_service: CourseService = Depends(get_course_service),
+):
+    try:
+        return course_service.create_reviews_bulk(student_id, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@reviews_router.post(
+    "/seed-all",
+    response_model=CourseReviewSeedResult,
+    status_code=status.HTTP_200_OK,
+)
+def seed_all_reviews(
+    db: Session = Depends(get_db),
+    course_service: CourseService = Depends(get_course_service),
+):
+    try:
+        result = course_service.seed_all_course_reviews(db)
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Review seed failed: {exc}",
+        ) from exc
+
+    if result.reviews_inserted == 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=result.message,
+        )
+    return result
+
+
+@reviews_router.delete(
+    "/all",
+    response_model=CourseReviewDeleteAllResult,
+    status_code=status.HTTP_200_OK,
+)
+def delete_all_reviews(
+    course_service: CourseService = Depends(get_course_service),
+):
+    return course_service.delete_all_reviews()
 
 
 @course_pipeline_router.post(

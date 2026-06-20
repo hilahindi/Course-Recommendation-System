@@ -187,6 +187,31 @@ class CourseReviewSubmit(BaseModel):
     is_anonymous: bool = False
 
 
+class CourseReviewBulkItem(BaseModel):
+    course_code: int
+    rating: int = Field(ge=1, le=5)
+    review_text: str
+    is_anonymous: bool = False
+
+
+class CourseReviewBulkCreate(BaseModel):
+    reviews: List[CourseReviewBulkItem] = Field(min_length=1)
+
+
+class CourseReviewSeedResult(BaseModel):
+    status: str
+    reviews_inserted: int
+    courses_seeded: int = 0
+    invalid_course_codes: List[int]
+    message: str
+
+
+class CourseReviewDeleteAllResult(BaseModel):
+    status: str
+    reviews_deleted: int
+    message: str
+
+
 class CourseReviewResponse(BaseModel):
     id: int
     student_id: int

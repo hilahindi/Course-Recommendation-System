@@ -7,8 +7,11 @@ from dtos import (
     CourseBase,
     CoursePipelineSeedResult,
     CoursePipelineStepResult,
+    CourseReviewBulkCreate,
     CourseReviewCreate,
+    CourseReviewDeleteAllResult,
     CourseReviewResponse,
+    CourseReviewSeedResult,
 )
 
 
@@ -42,6 +45,20 @@ class CourseService(ABC):
         review_text: str,
         is_anonymous: bool,
     ) -> CourseReviewResponse:
+        ...
+
+    @abstractmethod
+    def create_reviews_bulk(
+        self, student_id: int, bulk: CourseReviewBulkCreate
+    ) -> List[CourseReviewResponse]:
+        ...
+
+    @abstractmethod
+    def seed_all_course_reviews(self, db_session: Session) -> CourseReviewSeedResult:
+        ...
+
+    @abstractmethod
+    def delete_all_reviews(self) -> CourseReviewDeleteAllResult:
         ...
 
     @abstractmethod

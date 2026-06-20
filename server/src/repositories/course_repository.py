@@ -75,6 +75,15 @@ class CourseRepository:
             .all()
         )
 
+    def delete_all_course_reviews(self) -> int:
+        deleted = self._db.query(models.CourseReview).delete()
+        self._db.query(models.Course).update(
+            {models.Course.avg_rating: 0.0},
+            synchronize_session=False,
+        )
+        self._db.commit()
+        return deleted
+
     def get_course_by_code(self, course_code: int) -> Optional[models.Course]:
         return (
             self._db.query(models.Course)
@@ -213,6 +222,9 @@ class CourseRepository:
         self._db.refresh(student)
         return student
 
+    def commit(self) -> None:
+        self._db.commit()
+
     def upsert_seed_course(
         self,
         course_code: int,
@@ -308,6 +320,57 @@ class CourseRepository:
         self._db.commit()
         self._db.refresh(db_review)
         return db_review
+
+    def bulk_upsert_course_reviews(
+        self, reviews: list[tuple[int, CourseReviewCreate]]
+    ) -> int:
+        if not reviews:
+            return 0
+
+        student_ids = {student_id for student_id, _ in reviews}
+        course_codes = {review.course_code for _, review in reviews}
+        existing_rows = (
+            self._db.query(models.CourseReview)
+            .filter(models.CourseReview.student_id.in_(student_ids))
+            .filter(models.CourseReview.course_code.in_(course_codes))
+            .all()
+        )
+        existing_map = {
+            (row.student_id, row.course_code): row for row in existing_rows
+        }
+
+        inserted = 0
+        for student_id, review in reviews:
+            key = (student_id, review.course_code)
+            existing = existing_map.get(key)
+            if existing:
+                existing.rating = review.rating
+                existing.review_text = review.review_text
+                existing.is_anonymous = review.is_anonymous
+            else:
+                db_review = models.CourseReview(
+                    student_id=student_id,
+                    course_code=review.course_code,
+                    rating=review.rating,
+                    review_text=review.review_text,
+                    is_anonymous=review.is_anonymous,
+                )
+                self._db.add(db_review)
+                existing_map[key] = db_review
+            inserted += 1
+
+        self._db.commit()
+        return inserted
+
+    def bulk_update_course_avg_ratings(self, course_codes: set[int]) -> None:
+        if not course_codes:
+            return
+        averages = self.get_average_ratings_by_course()
+        for course_code in course_codes:
+            course = self.get_course_by_code(course_code)
+            if course:
+                course.avg_rating = averages.get(course_code, 0.0)
+        self._db.commit()
 
     def add_course_occurrence(
         self, course_code: int, occurrence: CourseOccurrenceSchema

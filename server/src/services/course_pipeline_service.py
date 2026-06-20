@@ -8,14 +8,36 @@ import bcrypt
 import numpy as np
 from sqlalchemy.orm import Session
 
+from dtos import CourseReviewCreate
 from interfaces.embedding_service import EmbeddingService
 from repositories.course_repository import CourseRepository
 from services.course_skills_catalog import resolve_skills_from_course_title
 
 SEED_STUDENT_EMAILS: tuple[tuple[str, str], ...] = (
-    ("pipeline.reviewer1@seed.local", "Seed Reviewer One"),
-    ("pipeline.reviewer2@seed.local", "Seed Reviewer Two"),
-    ("pipeline.reviewer3@seed.local", "Seed Reviewer Three"),
+    ("pipeline.reviewer1@seed.local", "user1"),
+    ("pipeline.reviewer2@seed.local", "user2"),
+    ("pipeline.reviewer3@seed.local", "user3"),
+)
+
+DEMO_REVIEW_TEMPLATES: tuple[tuple[str, int, bool], ...] = (
+    ("קורס מעניין עם תוכן רלוונטי לתואר.", 4, False),
+    ("המרצה מסביר ברור, העומס סביר.", 5, False),
+    ("עבודות מעשיות שעזרו להבין את החומר לעומק.", 4, True),
+    ("חומר מעמיק — דורש השקעה מחוץ לכיתה.", 3, True),
+    ("תרגולים מומלצים, המבחן היה הוגן.", 5, False),
+    ("קצת יבש בהרצאות, אבל החומר שימושי.", 3, False),
+    ("אחד הקורסים הכי טובים שלקחתי.", 5, False),
+    ("הרבה מטלות, קשה לעמוד בלוח הזמנים.", 2, True),
+    ("למדתי הרבה, במיוחד מהפרויקט בסוף.", 4, False),
+    ("מרצה נגיש ומסביר שוב כשלא מבינים.", 5, True),
+    ("המעבדות היו מצוינות ומלמדות.", 4, False),
+    ("ציפיתי ליותר תוכן מעשי.", 3, True),
+    ("שילוב טוב בין תיאוריה לתרגול.", 4, False),
+    ("קורס חובה — לא אהבתי אבל עברתי.", 3, True),
+    ("עזר לי מאוד בהשמה לעבודה.", 5, False),
+    ("ההרצאות ארוכות, קשה להישאר מרוכז.", 2, True),
+    ("חומר מעודכן ורלוונטי לשוק.", 4, False),
+    ("הקבוצה קטנה, אווירה נעימה.", 5, False),
 )
 
 SEED_COURSES: tuple[dict, ...] = (
@@ -172,6 +194,10 @@ class CoursePipelineService(ABC):
     def compile_course_ratings(self, db_session: Session) -> int:
         ...
 
+    @abstractmethod
+    def seed_reviews_for_all_courses(self, db_session: Session) -> dict:
+        ...
+
 
 class CoursePipelineServiceImpl(CoursePipelineService):
     def __init__(self, embedding_service: EmbeddingService) -> None:
@@ -183,19 +209,7 @@ class CoursePipelineServiceImpl(CoursePipelineService):
         reviews_inserted = 0
         students_inserted = 0
 
-        seed_password = bcrypt.hashpw(
-            b"pipeline-seed", bcrypt.gensalt()
-        ).decode("utf-8")
-
-        student_ids: list[int] = []
-        for email, name in SEED_STUDENT_EMAILS:
-            existing = repository.get_student_by_email(email)
-            if existing:
-                student_ids.append(existing.id)
-                continue
-            student = repository.create_seed_student(email, name, seed_password)
-            student_ids.append(student.id)
-            students_inserted += 1
+        student_ids, students_inserted = self._ensure_seed_students(repository)
 
         for course_data in SEED_COURSES:
             _, created = repository.upsert_seed_course(
@@ -225,6 +239,86 @@ class CoursePipelineServiceImpl(CoursePipelineService):
             "message": (
                 f"Seeded {courses_inserted} course(s), {reviews_inserted} review(s), "
                 f"and {students_inserted} student(s)."
+            ),
+        }
+
+    def _ensure_seed_students(
+        self, repository: CourseRepository
+    ) -> tuple[list[int], int]:
+        seed_password = bcrypt.hashpw(
+            b"pipeline-seed", bcrypt.gensalt()
+        ).decode("utf-8")
+
+        student_ids: list[int] = []
+        students_inserted = 0
+        names_updated = False
+
+        for email, name in SEED_STUDENT_EMAILS:
+            existing = repository.get_student_by_email(email)
+            if existing:
+                if existing.name != name:
+                    existing.name = name
+                    names_updated = True
+                student_ids.append(existing.id)
+                continue
+            student = repository.create_seed_student(email, name, seed_password)
+            student_ids.append(student.id)
+            students_inserted += 1
+
+        if names_updated:
+            repository.commit()
+
+        return student_ids, students_inserted
+
+    def seed_reviews_for_all_courses(self, db_session: Session) -> dict:
+        repository = CourseRepository(db_session)
+        student_ids, _ = self._ensure_seed_students(repository)
+        courses = repository.get_courses_for_pipeline()
+
+        if not courses:
+            return {
+                "status": "success",
+                "reviews_inserted": 0,
+                "courses_seeded": 0,
+                "invalid_course_codes": [],
+                "message": "No courses found in the database.",
+            }
+
+        pending: list[tuple[int, CourseReviewCreate]] = []
+        updated_course_codes: set[int] = set()
+        template_count = len(DEMO_REVIEW_TEMPLATES)
+
+        for course_index, course in enumerate(courses):
+            for review_slot in range(2):
+                template_index = (course_index * 2 + review_slot) % template_count
+                review_text, rating, is_anonymous = DEMO_REVIEW_TEMPLATES[template_index]
+                student_id = student_ids[
+                    (course_index + review_slot) % len(student_ids)
+                ]
+                pending.append(
+                    (
+                        student_id,
+                        CourseReviewCreate(
+                            course_code=course.course_code,
+                            rating=rating,
+                            review_text=review_text,
+                            is_anonymous=is_anonymous,
+                        ),
+                    )
+                )
+            updated_course_codes.add(course.course_code)
+
+        reviews_inserted = repository.bulk_upsert_course_reviews(pending)
+        repository.bulk_update_course_avg_ratings(updated_course_codes)
+
+        return {
+            "status": "success",
+            "reviews_inserted": reviews_inserted,
+            "courses_seeded": len(updated_course_codes),
+            "invalid_course_codes": [],
+            "message": (
+                f"Inserted {reviews_inserted} demo review(s) "
+                f"for {len(updated_course_codes)} course(s)."
             ),
         }
 

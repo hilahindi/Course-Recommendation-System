@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ReviewModal from '../components/ReviewModal';
@@ -6,6 +7,99 @@ import ReviewModal from '../components/ReviewModal';
 function parsePrerequisiteItems(text: string): string[] {
   if (!text?.trim()) return [];
   return text.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+const PASSING_GRADE = 60;
+
+function codeVariants(code: number): number[] {
+  const variants = [code];
+  if (code >= 100000) variants.push(code % 100000);
+  return variants;
+}
+
+function codeInPassed(code: number, passed: Set<number>): boolean {
+  return codeVariants(code).some(v => passed.has(v));
+}
+
+function buildPassedCodes(historyEntries: { course_code: number; grade: number }[]): Set<number> {
+  const passed = new Set<number>();
+  for (const entry of historyEntries) {
+    if (entry.grade < PASSING_GRADE) continue;
+    for (const variant of codeVariants(entry.course_code)) {
+      passed.add(variant);
+    }
+  }
+  return passed;
+}
+
+function buildCourseNameIndex(courses: { course_code: number; name: string }[]): Map<string, number[]> {
+  const map = new Map<string, number[]>();
+  for (const course of courses) {
+    const key = course.name.trim();
+    const codes = map.get(key) ?? [];
+    codes.push(course.course_code);
+    map.set(key, codes);
+  }
+  return map;
+}
+
+function prereqNameSatisfied(
+  name: string,
+  passed: Set<number>,
+  nameToCodes: Map<string, number[]>,
+  courses: { course_code: number; name: string }[],
+): boolean {
+  const normalized = name.replace(/\s*\(במקביל\)\s*$/i, '').trim();
+  if (!normalized) return true;
+
+  const direct = nameToCodes.get(normalized);
+  if (direct?.some(code => codeInPassed(code, passed))) return true;
+
+  for (const course of courses) {
+    const courseName = course.name.trim();
+    if (
+      courseName === normalized ||
+      courseName.includes(normalized) ||
+      normalized.includes(courseName)
+    ) {
+      if (codeInPassed(course.course_code, passed)) return true;
+    }
+  }
+  return false;
+}
+
+function prerequisitesMet(
+  course: {
+    prerequisites?: string;
+    prerequisite_course_codes?: number[];
+  },
+  passed: Set<number>,
+  nameToCodes: Map<string, number[]>,
+  courses: { course_code: number; name: string }[],
+): boolean {
+  const structured = course.prerequisite_course_codes ?? [];
+  if (structured.length > 0) {
+    return structured.every(code => codeInPassed(code, passed));
+  }
+
+  const text = course.prerequisites?.trim();
+  if (!text) return true;
+
+  const numericCodes = text.match(/\d{4,7}/g);
+  if (numericCodes?.length) {
+    return numericCodes.every(c => codeInPassed(parseInt(c, 10), passed));
+  }
+
+  const items = parsePrerequisiteItems(text);
+  if (items.length === 0) return true;
+
+  return items.every(item => {
+    const orParts = item.split(/\s+או\s+/).map(s => s.trim()).filter(Boolean);
+    if (orParts.length > 1) {
+      return orParts.some(part => prereqNameSatisfied(part, passed, nameToCodes, courses));
+    }
+    return prereqNameSatisfied(item, passed, nameToCodes, courses);
+  });
 }
 
 const STAT_BOX_CLASS =
@@ -176,9 +270,10 @@ function CourseModal({ course, onClose, onOpenReviews }: { course: any, onClose:
 
 export default function CourseExplorer() {
   const { user } = useAuth();
+  const location = useLocation();
   const [courses, setCourses] = useState<any[]>([]);
   const [tracks, setTracks] = useState<any[]>([]);
-  const [history, setHistory] = useState<Set<number>>(new Set());
+  const [passedCodes, setPassedCodes] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   
   // Filters
@@ -201,7 +296,7 @@ export default function CourseExplorer() {
         ]);
         setCourses(coursesRes.data);
         if (metaRes.data?.tracks) setTracks(metaRes.data.tracks);
-        setHistory(new Set(histRes.data.map((h: any) => h.course_code)));
+        setPassedCodes(buildPassedCodes(histRes.data));
       } catch (err) {
         console.error(err);
       } finally {
@@ -209,16 +304,12 @@ export default function CourseExplorer() {
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, location.pathname]);
 
   const courseInTrack = (course: { track_ids?: number[]; track_id?: number | null }, trackId: number) =>
     course.track_ids?.includes(trackId) || course.track_id === trackId;
 
-  const hasPrereqs = (prereqs: string) => {
-    if (!prereqs) return true;
-    const codes = prereqs.match(/\d{4,7}/g) || [];
-    return codes.every((c) => history.has(parseInt(c, 10)));
-  };
+  const nameToCodes = useMemo(() => buildCourseNameIndex(courses), [courses]);
 
   const filteredCourses = courses.filter((c) => {
     const matchesSearch =
@@ -229,7 +320,9 @@ export default function CourseExplorer() {
 
     const matchesAttendance = noMandatoryAttendance ? !c.mandatory_attendance : true;
     const matchesWorkload = lowWorkload ? c.workload <= 3 : true;
-    const matchesPrereqs = prereqsMetOnly ? hasPrereqs(c.prerequisites) : true;
+    const matchesPrereqs = prereqsMetOnly
+      ? prerequisitesMet(c, passedCodes, nameToCodes, courses)
+      : true;
 
     return matchesSearch && matchesTrack && matchesAttendance && matchesWorkload && matchesPrereqs;
   });

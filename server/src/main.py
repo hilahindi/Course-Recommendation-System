@@ -1,6 +1,7 @@
 import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +14,7 @@ from api.v1 import (
     profile_router,
     recommendations_router,
 )
+from catalog_sync import bootstrap_catalog_sync, catalog_sync_status
 from database import (
     SessionLocal,
     engine,
@@ -30,14 +32,7 @@ ensure_industry_jobs_table_sync()
 drop_jobroles_skill_vector()
 drop_jobrole_skill_link_table()
 
-# Sync curriculum catalog to DB once at startup
-_startup_db = SessionLocal()
-try:
-    CourseRepository(_startup_db).ensure_track_course_links()
-finally:
-    _startup_db.close()
-
-app = FastAPI()
+scheduler = BackgroundScheduler()
 
 
 def scheduled_market_sync():
@@ -53,9 +48,17 @@ def scheduled_market_sync():
         db.close()
 
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(scheduled_market_sync, "cron", day_of_week="sun", hour=1, minute=0)
-scheduler.start()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bootstrap_catalog_sync()
+    scheduler.add_job(scheduled_market_sync, "cron", day_of_week="sun", hour=1, minute=0)
+    scheduler.start()
+    yield
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+
+
+app = FastAPI(lifespan=lifespan)
 
 _raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 _allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
@@ -80,7 +83,9 @@ app.include_router(jobs_router.router)
 
 @app.get("/api/v1/test")
 def read_test():
+    sync = catalog_sync_status()
     return {
         "status": "success",
         "message": "The server is connected to the client and Cron Job is active!",
+        "catalog_sync": sync,
     }

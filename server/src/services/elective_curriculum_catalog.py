@@ -2,6 +2,11 @@
 
 from services.mandatory_curriculum_catalog import CurriculumCourseSpec
 
+# Legacy DB course codes → canonical Afeka syllabus codes
+LEGACY_ELECTIVE_CODES: dict[int, int] = {
+    10200: 10208,  # פיתוח ממשקי משתמש
+}
+
 # Canonical names used in prerequisite strings
 PREREQ_NAME_ALIASES: dict[str, str] = {
     "אלגברה ליניארית": "אלגברה ליניארית 1",
@@ -12,37 +17,37 @@ PREREQ_NAME_ALIASES: dict[str, str] = {
 }
 
 ELECTIVE_CURRICULUM: tuple[CurriculumCourseSpec, ...] = (
-    # --- סמינרים (2.5 נ"ז) ---
+    # --- סמינרים (2.5 נ"ז) — Afeka syllabus codes ---
     CurriculumCourseSpec(
-        92001,
+        11015,
         "סמינר במדעי המחשב",
         2.5,
         category="seminar",
         prereq_and=("תכנון וניתוח אלגוריתמים",),
     ),
     CurriculumCourseSpec(
-        92002,
+        10221,
         "סמינר מתקדם בטכנולוגיות סלולריות",
         2.5,
         category="seminar",
         prereq_and=("פיתוח ממשקי משתמש",),
     ),
     CurriculumCourseSpec(
-        92003,
+        10352,
         "סמינר בסייבר",
         2.5,
         category="seminar",
         prereq_and=("אבטחת מידע",),
     ),
     CurriculumCourseSpec(
-        92004,
+        10355,
         "סמינר בלמידה חישובית",
         2.5,
         category="seminar",
         prereq_and=("תכנון וניתוח אלגוריתמים",),
     ),
     CurriculumCourseSpec(
-        92005,
+        10356,
         "סמינר בשפות תכנות",
         2.5,
         category="seminar",

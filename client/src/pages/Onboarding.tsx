@@ -4,14 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Select from 'react-select';
 import { FLUID_CONTAINER } from '../lib/layout';
 
-const INITIAL_SCHEDULE = {
-  'ראשון': { active: false, start: '08:00', end: '21:00' },
-  'שני': { active: false, start: '08:00', end: '21:00' },
-  'שלישי': { active: false, start: '08:00', end: '21:00' },
-  'רביעי': { active: false, start: '08:00', end: '21:00' },
-  'חמישי': { active: false, start: '08:00', end: '21:00' },
-  'שישי': { active: false, start: '08:00', end: '13:00' },
-};
+const ONBOARDING_STEPS = 4;
 
 export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const { user } = useAuth();
@@ -35,8 +28,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [history, setHistory] = useState<{course_code: number, grade: number | ''}[]>([]);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [grade, setGrade] = useState('');
-  
-  const [schedule, setSchedule] = useState(INITIAL_SCHEDULE);
 
   useEffect(() => {
     api.getCourses()
@@ -72,7 +63,6 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     if (step === 2) return yearOfStudy >= 1;
     if (step === 3) return selectedJobRole !== null && selectedTrack !== null;
     if (step === 4) return history.length > 0 && !history.some(h => h.grade === '');
-    if (step === 5) return calculateTotalWorkload() > 0;
     return true;
   };
 
@@ -118,30 +108,12 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     setHistory(newHistory);
   };
 
-  const calculateTotalWorkload = () => {
-    let totalHours = 0;
-    Object.values(schedule).forEach(day => {
-      if (day.active && day.start && day.end) {
-        const [startH, startM] = day.start.split(':').map(Number);
-        const [endH, endM] = day.end.split(':').map(Number);
-        let hours = endH - startH + (endM - startM) / 60;
-        if (hours > 0) totalHours += hours;
-      }
-    });
-    return Math.round(totalHours);
-  };
-
-  const handleNextFromStep4 = () => {
-    if (!isStepValid()) {
-      setStep4Error("יש להזין ציון לכל הקורסים ברשימה, או למחוק קורסים מיותרים.");
+  const handleFinish = async () => {
+    if (!user || !isStepValid()) {
+      setStep4Error('יש להזין ציון לכל הקורסים ברשימה, או למחוק קורסים מיותרים.');
       return;
     }
     setStep4Error('');
-    setStep(5);
-  };
-
-  const handleFinish = async () => {
-    if (!user || !isStepValid()) return;
     setSubmitError('');
 
     setSaving(true);
@@ -149,28 +121,21 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
       if (history.length > 0) {
         await api.addHistoryBulk(user.user_id, { courses: history });
       }
-      
-      const activeScheduleDays = Object.entries(schedule)
-        .filter(([_, data]) => data.active)
-        .map(([day, data]) => `${day} (${data.start}-${data.end})`);
 
-      const workload = calculateTotalWorkload();
-      
       await api.updateProfile(user.user_id, {
         degree,
         year_of_study: yearOfStudy,
-        available_days: activeScheduleDays.join(', '), 
-        target_workload: workload || 0,
+        target_workload: 3,
         needs_flexible_attendance: false,
         interested_track_ids: selectedTrack ? [selectedTrack] : [],
         interested_job_role_ids: selectedJobRole ? [selectedJobRole] : [],
-        onboarding_completed: true
+        onboarding_completed: true,
       });
-      
+
       onComplete();
     } catch (err) {
       console.error(err);
-      setSubmitError("אופס! שגיאה בשמירת נתוני הפרופיל. אנא נסי שוב.");
+      setSubmitError('אופס! שגיאה בשמירת נתוני הפרופיל. אנא נסי שוב.');
     } finally {
       setSaving(false);
     }
@@ -189,7 +154,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         <div className="absolute top-0 right-0 w-full h-1.5 bg-gray-100">
           <div 
             className="h-full bg-gradient-to-l from-emerald-500 to-teal-500 transition-all duration-300"
-            style={{ width: `${(step / 5) * 100}%` }}
+            style={{ width: `${(step / ONBOARDING_STEPS) * 100}%` }}
           />
         </div>
 
@@ -344,12 +309,10 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             <h2 className="text-xl font-semibold mb-1 text-gray-800">שלב 4: היסטוריית קורסים</h2>
             <p className="text-sm text-gray-500 mb-4">הזן/י את הקורסים שכבר עברת כדי שלא נמליץ עליהם שוב.</p>
 
-            {yearOfStudy > 1 && (
+            {yearOfStudy >= 1 && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                <h4 className="font-medium text-blue-800 mb-2">מילוי אוטומטי חכם ⚡</h4>
-                <p className="text-xs text-blue-600 mb-3">חסוך זמן! הוסף בלחיצה את כל קורסי החובה של השנים הקודמות.</p>
                 <div className="flex gap-2 flex-wrap">
-                  {[...Array(yearOfStudy - 1)].map((_, i) => (
+                  {[...Array(yearOfStudy)].map((_, i) => (
                     <button 
                       key={i}
                       onClick={() => handleAutoFill(i + 1)}
@@ -462,82 +425,16 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             <div className="flex justify-between items-center mt-8 pt-4 border-t border-gray-100 pb-6">
               <button onClick={() => setStep(3)} className="text-gray-500 hover:text-gray-800 px-4 py-2">חזור</button>
               <div className="relative">
-                <button 
-                  onClick={handleNextFromStep4} 
-                  disabled={!isStepValid()}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-2.5 rounded-lg font-medium shadow-lg transition-colors disabled:opacity-50"
-                >
-                  המשך לשלב הבא
-                </button>
-                {step4Error && (
-                  <span className="absolute top-full right-0 mt-2 text-red-500 text-sm font-medium w-max">
-                    {step4Error}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 5: Availability */}
-        {step === 5 && (
-          <div className="space-y-6 animate-fade-in">
-            <h2 className="text-xl font-semibold mb-1 text-gray-800">שלב 5: זמני למידה (מערכת שעות)</h2>
-            <p className="text-sm text-gray-500 mb-6">סמן/י באילו ימים ושעות את/ה פנוי/ה להגיע להרצאות או ללמוד בבית.</p>
-            
-            <div className="space-y-3">
-              {Object.entries(schedule).map(([dayName, data]) => (
-                <div key={dayName} className={`flex items-center gap-4 p-3 rounded-xl border transition-colors ${data.active ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
-                  <label className="flex items-center gap-3 cursor-pointer w-28">
-                    <input 
-                      type="checkbox"
-                      checked={data.active}
-                      onChange={(e) => setSchedule({
-                        ...schedule,
-                        [dayName]: { ...data, active: e.target.checked }
-                      })}
-                      className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
-                    />
-                    <span className={`font-medium ${data.active ? 'text-emerald-800' : 'text-gray-500'}`}>יום {dayName}</span>
-                  </label>
-                  <div className={`flex items-center gap-2 flex-grow transition-opacity duration-200 ${data.active ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                    <span className="text-sm text-gray-500">מ-</span>
-                    <input 
-                      type="time" 
-                      value={data.start}
-                      onChange={(e) => setSchedule({...schedule, [dayName]: { ...data, start: e.target.value }})}
-                      className="bg-white border border-gray-300 rounded-md p-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                    />
-                    <span className="text-sm text-gray-500">עד-</span>
-                    <input 
-                      type="time" 
-                      value={data.end}
-                      onChange={(e) => setSchedule({...schedule, [dayName]: { ...data, end: e.target.value }})}
-                      className="bg-white border border-gray-300 rounded-md p-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-gray-100 p-4 rounded-xl mt-6 flex justify-between items-center border border-gray-200">
-              <span className="text-gray-600 font-medium">סך שעות למידה פנויות בשבוע:</span>
-              <span className="text-2xl font-bold text-gray-800">{calculateTotalWorkload()} <span className="text-sm font-normal">שעות</span></span>
-            </div>
-
-            <div className="flex justify-between items-center mt-8 pt-4 border-t border-gray-200 pb-6">
-              <button onClick={() => setStep(4)} className="text-gray-500 hover:text-gray-800 px-4 py-2">חזור</button>
-              <div className="relative">
-                <button 
-                  onClick={handleFinish} 
+                <button
+                  onClick={handleFinish}
                   disabled={saving || !isStepValid()}
                   className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/30 disabled:opacity-50 transition-all transform hover:scale-105"
                 >
                   {saving ? 'מגדיר פרופיל...' : 'סיים ומעבר לדשבורד'}
                 </button>
-                {submitError && (
+                {(step4Error || submitError) && (
                   <span className="absolute top-full right-0 mt-2 text-red-500 text-sm font-medium w-max">
-                    {submitError}
+                    {step4Error || submitError}
                   </span>
                 )}
               </div>

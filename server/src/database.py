@@ -10,7 +10,24 @@ SQLALCHEMY_DATABASE_URL = os.getenv(
     "postgresql://admin:password123@127.0.0.1:5433/course_recommender",
 )
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+_connect_args: dict = {}
+if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
+    _connect_args = {
+        "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "30")),
+        "keepalives": 1,
+        "keepalives_idle": int(os.getenv("DB_KEEPALIVES_IDLE", "30")),
+        "keepalives_interval": int(os.getenv("DB_KEEPALIVES_INTERVAL", "10")),
+        "keepalives_count": int(os.getenv("DB_KEEPALIVES_COUNT", "5")),
+    }
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    pool_pre_ping=True,  # reconnect if cloud DB dropped idle connection
+    pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "1800")),
+    pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
+    max_overflow=int(os.getenv("DB_POOL_MAX_OVERFLOW", "10")),
+    connect_args=_connect_args,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

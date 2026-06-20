@@ -30,13 +30,13 @@ async def get_personalized_recommendations(
 
 
 @router.get("/roadmap", status_code=status.HTTP_200_OK)
-def get_roadmap(
+async def get_roadmap(
     student_id: int = Depends(get_current_student_id),
     db: Session = Depends(get_db),
     roadmap_service: RoadmapServiceImpl = Depends(get_roadmap_service),
 ) -> dict:
     try:
-        return roadmap_service.build_roadmap(student_id, db)
+        return await roadmap_service.build_roadmap(student_id, db)
     except HTTPException:
         raise
     except Exception as exc:

@@ -8,6 +8,6 @@ class RecommendationService(ABC):
 
     @abstractmethod
     async def get_personalized_recommendations(
-        self, db_session: Session, student_id: int
+        self, db_session: Session, student_id: int, limit: int = 10
     ) -> list[dict]:
         ...

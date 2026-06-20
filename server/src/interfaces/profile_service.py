@@ -42,6 +42,10 @@ class ProfileService(ABC):
         ...
 
     @abstractmethod
+    def remove_history(self, student_id: int, course_code: int) -> None:
+        ...
+
+    @abstractmethod
     def get_schedule(self, student_id: int) -> List[PlannedCourseResponse]:
         ...
 

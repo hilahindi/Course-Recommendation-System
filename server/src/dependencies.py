@@ -36,7 +36,17 @@ def get_current_student_id(
 
 
 def get_course_repository(db: Session = Depends(get_db)) -> CourseRepository:
-    return CourseRepository(db)
+    from catalog_sync import catalog_sync_status
+
+    repository = CourseRepository(db)
+    sync_status = catalog_sync_status().get("status")
+    # Background sync owns the lock while running; retry only if it never ran or failed.
+    if sync_status not in ("running", "ready", "skipped"):
+        try:
+            repository.ensure_catalog_synced()
+        except Exception:
+            db.rollback()
+    return repository
 
 
 def get_embedding_service() -> EmbeddingService:
@@ -89,5 +99,6 @@ def get_profile_service(
 
 def get_roadmap_service(
     repository: CourseRepository = Depends(get_course_repository),
+    recommendation_service: RecommendationService = Depends(get_recommendation_service),
 ) -> RoadmapServiceImpl:
-    return RoadmapServiceImpl(repository)
+    return RoadmapServiceImpl(repository, recommendation_service)

@@ -144,10 +144,26 @@ class StudentProfileResponse(BaseModel):
         from_attributes = True
 
 
+class PrerequisiteSummary(BaseModel):
+    code: int
+    name: str
+
+
+class RecommendationScoreBreakdown(BaseModel):
+    track: int = 0
+    industry: int = 0
+    ratings: int = 0
+
+
 class RecommendationResponse(BaseModel):
     course: CourseBase
     score: int
     explanation: str
+    matching_skills: List[str] = []
+    in_track_bundle: bool = False
+    prerequisites_met: bool = True
+    missing_prerequisites: List[PrerequisiteSummary] = []
+    score_breakdown: RecommendationScoreBreakdown = RecommendationScoreBreakdown()
 
 
 class AverageFeatureVectorResponse(BaseModel):

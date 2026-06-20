@@ -146,7 +146,7 @@ export default function Dashboard() {
             עריכת העדפות ←
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
             <div className="text-gray-400 text-xs mb-1 uppercase tracking-wider">שנת לימודים</div>
             <div className="font-medium text-lg">שנה {profile?.year_of_study || 1}</div>
@@ -154,10 +154,6 @@ export default function Dashboard() {
           <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
             <div className="text-gray-400 text-xs mb-1 uppercase tracking-wider">תואר</div>
             <div className="font-medium text-lg truncate">{profile?.degree || 'מדעי המחשב'}</div>
-          </div>
-          <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
-            <div className="text-gray-400 text-xs mb-1 uppercase tracking-wider">עומס יעד</div>
-            <div className="font-medium text-lg">{profile?.target_workload || 3} / 5</div>
           </div>
           <div className="bg-gray-100 p-4 rounded-xl border border-gray-200">
             <div className="text-gray-400 text-xs mb-1 uppercase tracking-wider">מסלולים</div>

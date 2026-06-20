@@ -36,7 +36,13 @@ COURSE_SKILLS_BY_NAME: dict[str, str] = {
     "פרויקט גמר למדעים 1": (
         "Requirements Analysis, System Design, Technical Documentation, Team Collaboration, Milestone Planning"
     ),
+    "פרויקט במדעי המחשב - חלק 1": (
+        "Requirements Analysis, System Design, Technical Documentation, Team Collaboration, Milestone Planning"
+    ),
     "פרויקט גמר למדעים 2": (
+        "Full-Stack Integration, Testing Strategy, Deployment, Project Presentation, Engineering Trade-offs"
+    ),
+    "פרויקט במדעי המחשב - חלק 2": (
         "Full-Stack Integration, Testing Strategy, Deployment, Project Presentation, Engineering Trade-offs"
     ),
     "הסקה סטטיסטית": (

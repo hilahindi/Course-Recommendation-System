@@ -1,70 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import Select from 'react-select';
+import ReviewModal from '../components/ReviewModal';
 
-function ReviewModal({ course, onClose }: { course: any; onClose: () => void }) {
-  const { user } = useAuth();
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [reviewText, setReviewText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+type HistoryEntry = {
+  id?: number;
+  course_code: number;
+  grade: number | '';
+  course?: { name: string };
+};
 
-  const handleSubmit = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    if (!user || rating === 0) return;
-    setSubmitting(true);
-    try {
-      await api.createCourseReview(course.code, user.user_id, {
-        rating,
-        review_text: reviewText,
-      });
-      onClose();
-    } catch {
-      alert('שגיאה בשליחת הביקורת');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-fade-in">
-      <div className="glass-panel w-full max-w-lg relative !p-8">
-        <button onClick={onClose} className="absolute top-4 left-4 text-gray-400 hover:text-gray-800 transition-colors text-xl">✕</button>
-        <h2 className="text-xl font-bold mb-1 text-right">{course.name}</h2>
-        <p className="text-gray-500 text-sm mb-6 text-right">שתף את החוויה שלך כדי לעזור לסטודנטים אחרים</p>
-        <form onSubmit={handleSubmit} className="space-y-5" dir="rtl">
-          <div className="flex gap-2 text-4xl cursor-pointer justify-center">
-            {[1, 2, 3, 4, 5].map(star => (
-              <span
-                key={star}
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(0)}
-                onClick={() => setRating(star)}
-                className={`transition-all hover:scale-110 ${(hoverRating || rating) >= star ? 'text-yellow-400' : 'text-gray-300'}`}
-              >★</span>
-            ))}
-          </div>
-          <textarea
-            value={reviewText}
-            onChange={e => setReviewText(e.target.value)}
-            placeholder="מה אהבת? מה היה קשה? איך היה העומס?"
-            className="w-full h-28 bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-400 transition-all resize-none"
-          />
-          <button
-            type="submit"
-            disabled={submitting || rating === 0}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'שולח...' : 'שלח ביקורת'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+function entryIsUnsaved(entry: HistoryEntry, savedHistory: HistoryEntry[]): boolean {
+  if (entry.id == null) return true;
+  const saved = savedHistory.find(s => s.course_code === entry.course_code);
+  return saved == null || saved.grade !== entry.grade;
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  passed: 'border-emerald-400 bg-emerald-50',
+  passed: 'border-emerald-500 bg-emerald-100 ring-1 ring-emerald-200/80',
   upcoming: 'border-gray-200 bg-gray-50 opacity-70',
   recommended: 'border-teal-400 bg-teal-50',
 };
@@ -82,6 +36,12 @@ const CATEGORY_LABEL: Record<string, string> = {
   seminar: 'סמינר',
 };
 
+const MANDATORY_YEAR_LABELS: Record<number, string> = {
+  1: "א'",
+  2: "ב'",
+  3: "ג'",
+};
+
 export default function CourseHistory() {
   const { user } = useAuth();
   const [roadmap, setRoadmap] = useState<any>(null);
@@ -89,16 +49,167 @@ export default function CourseHistory() {
   const [error, setError] = useState<string | null>(null);
   const [reviewingCourse, setReviewingCourse] = useState<any>(null);
 
-  const fetchRoadmap = () => {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [savedHistory, setSavedHistory] = useState<HistoryEntry[]>([]);
+  const [yearlyCoursesMap, setYearlyCoursesMap] = useState<Record<number, number[]>>({});
+  const [selectedCourse, setSelectedCourse] = useState<number | ''>('');
+  const [grade, setGrade] = useState('');
+  const [historySaving, setHistorySaving] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [showHistoryEditor, setShowHistoryEditor] = useState(false);
+
+  const fetchRoadmap = useCallback(() => {
+    if (!user) return Promise.resolve();
+    return api.getRoadmap()
+      .then(res => setRoadmap(res.data))
+      .catch(() => setError('לא ניתן לטעון את מפת הדרכים'));
+  }, [user]);
+
+  const fetchHistoryData = useCallback(() => {
+    if (!user) return Promise.resolve();
+    return Promise.all([
+      api.getHistory(user.user_id),
+      api.getCourses(),
+      api.getYearlyMandatoryCourses(),
+    ])
+      .then(([historyRes, coursesRes, yearlyRes]) => {
+        const saved: HistoryEntry[] = historyRes.data.map((h: HistoryEntry) => ({
+          id: h.id,
+          course_code: h.course_code,
+          grade: h.grade,
+          course: h.course,
+        }));
+        setSavedHistory(saved);
+        setHistory(prev => {
+          const drafts = prev.filter(h => entryIsUnsaved(h, saved));
+          const savedCodes = new Set(saved.map(s => s.course_code));
+          const keptDrafts = drafts.filter(d => !savedCodes.has(d.course_code));
+          return [...saved, ...keptDrafts];
+        });
+        setYearlyCoursesMap(yearlyRes.data);
+        setCourses(coursesRes.data);
+      })
+      .catch(() => setHistoryError('לא ניתן לטעון את היסטוריית הקורסים'));
+  }, [user]);
+
+  const refreshAll = useCallback(() => {
     if (!user) return;
     setLoading(true);
-    api.getRoadmap()
-      .then(res => setRoadmap(res.data))
-      .catch(() => setError('לא ניתן לטעון את מפת הדרכים'))
+    setError(null);
+    Promise.all([fetchRoadmap(), fetchHistoryData()])
       .finally(() => setLoading(false));
+  }, [user, fetchRoadmap, fetchHistoryData]);
+
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  const historyCourseCodes = new Set(history.map(h => h.course_code));
+  const availableCourseOptions = courses.filter(
+    c => !historyCourseCodes.has(c.course_code)
+  );
+
+  const currentCodes = new Set(history.map(h => h.course_code));
+  const hasPendingChanges =
+    savedHistory.some(s => !currentCodes.has(s.course_code)) ||
+    history.some(h => entryIsUnsaved(h, savedHistory));
+
+  const handleAddHistory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedCourse === '') return;
+    const courseCode = Number(selectedCourse);
+
+    let numericGrade: number | '' = '';
+    if (grade !== '') {
+      const parsed = parseInt(grade, 10);
+      if (Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
+        setHistoryError('יש להזין ציון בין 0 ל-100');
+        return;
+      }
+      numericGrade = parsed;
+    }
+
+    const course = courses.find(c => c.course_code === courseCode);
+    setHistory(prev => [
+      ...prev,
+      {
+        course_code: courseCode,
+        grade: numericGrade,
+        course: course ? { name: course.name } : undefined,
+      },
+    ]);
+    setSelectedCourse('');
+    setGrade('');
+    setHistoryError(null);
   };
 
-  useEffect(fetchRoadmap, [user]);
+  const handleRemoveHistory = (courseCode: number) => {
+    setHistory(prev => prev.filter(h => h.course_code !== courseCode));
+    setHistoryError(null);
+  };
+
+  const handleSaveAll = async () => {
+    if (!user) return;
+
+    const missingGrade = history.filter(h => h.grade === '');
+    if (missingGrade.length > 0) {
+      setHistoryError('יש להזין ציון לכל הקורסים לפני שמירה');
+      return;
+    }
+
+    setHistorySaving(true);
+    setHistoryError(null);
+    try {
+      const toDelete = savedHistory.filter(s => !currentCodes.has(s.course_code));
+      const toUpsert = history.filter(h => entryIsUnsaved(h, savedHistory));
+
+      await Promise.all(
+        toDelete.map(s => api.deleteHistory(user.user_id, s.course_code))
+      );
+
+      if (toUpsert.length > 0) {
+        await api.addHistoryBulk(user.user_id, {
+          courses: toUpsert.map(h => ({
+            course_code: h.course_code,
+            grade: h.grade as number,
+          })),
+        });
+      }
+
+      await Promise.all([fetchHistoryData(), fetchRoadmap()]);
+    } catch {
+      setHistoryError('שגיאה בשמירה. נסי שוב.');
+    } finally {
+      setHistorySaving(false);
+    }
+  };
+
+  const handleAutoFill = (year: number) => {
+    const knownCodes = new Set(courses.map(c => c.course_code));
+    const existingCodes = new Set(history.map(h => h.course_code));
+    const toAdd = (yearlyCoursesMap[year] || []).filter(
+      code => knownCodes.has(code) && !existingCodes.has(code)
+    );
+
+    if (toAdd.length === 0) return;
+
+    setHistory(prev => [
+      ...prev,
+      ...toAdd.map(code => {
+        const course = courses.find(c => c.course_code === code);
+        return {
+          course_code: code,
+          grade: '' as const,
+          course: course ? { name: course.name } : undefined,
+        };
+      }),
+    ]);
+  };
+
+  const mandatoryYearButtons = ([1, 2, 3] as const).filter(
+    year => (yearlyCoursesMap[year]?.length ?? 0) > 0
+  );
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
@@ -109,7 +220,7 @@ export default function CourseHistory() {
   if (error) return (
     <div className="text-center py-20 text-gray-500">
       <p className="mb-4">{error}</p>
-      <button onClick={fetchRoadmap} className="text-emerald-600 underline">נסה שוב</button>
+      <button onClick={refreshAll} className="text-emerald-600 underline">נסה שוב</button>
     </div>
   );
 
@@ -152,9 +263,228 @@ export default function CourseHistory() {
           </div>
           <div className="text-center">
             <div className="font-bold text-blue-600 text-lg">{summary.passed_seminars ?? 0}/{summary.seminars_needed ?? 0}</div>
-            <div className="text-gray-500">סמינריון</div>
+            <div className="text-gray-500">סמינר</div>
           </div>
         </div>
+
+        {summary.seminar_path && (
+          <p className="mt-5 text-center text-teal-800 font-medium">
+            {summary.seminar_path.target_name}
+          </p>
+        )}
+      </div>
+
+      {/* Add completed courses */}
+      <div className="glass-panel">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-bold text-gray-800">קורסים שעברתי</h2>
+          <button
+            type="button"
+            onClick={() => setShowHistoryEditor(v => !v)}
+            className="text-sm font-medium text-emerald-700 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-lg transition-colors"
+          >
+            {showHistoryEditor ? 'הסתר' : history.length === 0 ? 'הוסף קורסים' : 'ערוך קורסים'}
+          </button>
+        </div>
+
+        {!showHistoryEditor && history.length > 0 && (
+          <p className="text-sm text-gray-600">
+            {history.length} קורסים רשומים.
+          </p>
+        )}
+
+        {showHistoryEditor && (
+          <div className="space-y-4 mt-2">
+            {mandatoryYearButtons.length > 0 && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <p className="text-xs text-blue-700 mb-3 font-medium">הוסף קורסי חובה לפי שנה</p>
+                <div className="flex gap-2 flex-wrap">
+                  {mandatoryYearButtons.map(year => (
+                    <button
+                      key={year}
+                      type="button"
+                      disabled={historySaving}
+                      onClick={() => handleAutoFill(year)}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+                    >
+                      קורסי חובה שנה {MANDATORY_YEAR_LABELS[year]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <form
+              onSubmit={handleAddHistory}
+              className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col sm:flex-row sm:items-end gap-3 w-full"
+            >
+              <div className="flex flex-col flex-1 min-w-0 text-right">
+                <label className="text-xs text-gray-600 mb-1.5 mr-1 font-medium">חפש או בחר קורס</label>
+                <Select
+                  className="text-sm"
+                  placeholder="הקלד שם או מספר קורס..."
+                  options={availableCourseOptions.map(c => ({
+                    value: c.course_code,
+                    label: `${c.course_code} - ${c.name}`,
+                  }))}
+                  value={
+                    selectedCourse === ''
+                      ? null
+                      : availableCourseOptions
+                          .map(c => ({ value: c.course_code, label: `${c.course_code} - ${c.name}` }))
+                          .find(o => o.value === selectedCourse) ?? null
+                  }
+                  onChange={(selected: { value: number } | null) =>
+                    setSelectedCourse(selected ? selected.value : '')
+                  }
+                  isSearchable
+                  isClearable
+                  isDisabled={historySaving}
+                  noOptionsMessage={() => 'לא נמצאו קורסים'}
+                  styles={{
+                    control: base => ({
+                      ...base,
+                      borderRadius: '0.5rem',
+                      borderColor: '#D1D5DB',
+                      minHeight: '40px',
+                      boxShadow: 'none',
+                      '&:hover': { borderColor: '#34D399' },
+                    }),
+                  }}
+                />
+              </div>
+
+              <div className="flex flex-col w-full sm:w-24 text-right shrink-0">
+                <label className="text-xs text-gray-600 mb-1.5 mr-1 font-medium">ציון</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="0-100"
+                  value={grade}
+                  onChange={e => setGrade(e.target.value)}
+                  disabled={historySaving}
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 h-10 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 m-0 box-border"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={selectedCourse === ''}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium px-6 h-10 rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap shrink-0"
+              >
+                הוסף
+              </button>
+            </form>
+
+            {history.length > 0 && (
+              <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-2 flex justify-between items-center text-sm font-semibold text-gray-600 border-b border-gray-100">
+                  <span>קורס</span>
+                  <span>ציון</span>
+                </div>
+                <div className="max-h-60 overflow-y-auto custom-scrollbar divide-y divide-gray-100">
+                  {history.map(entry => {
+                    const name =
+                      entry.course?.name ??
+                      courses.find(c => c.course_code === entry.course_code)?.name ??
+                      'קורס לא ידוע';
+                    const unsaved = entryIsUnsaved(entry, savedHistory);
+                    const isNew = entry.id == null;
+                    const hasGrade = entry.grade !== '';
+                    const passed = !unsaved && hasGrade && entry.grade >= 60;
+                    const failed = !unsaved && hasGrade && entry.grade < 60;
+                    return (
+                      <div
+                        key={entry.course_code}
+                        className={`flex justify-between items-center p-3 px-4 transition-colors gap-3 ${
+                          unsaved
+                            ? 'bg-sky-50 hover:bg-sky-100/70 border-s-4 border-s-sky-400'
+                            : passed
+                              ? 'bg-emerald-50 hover:bg-emerald-100/80'
+                              : failed
+                                ? 'bg-amber-50/60 hover:bg-amber-50'
+                                : 'bg-white hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="min-w-0 text-right">
+                          <span className={`font-mono font-medium ml-2 ${
+                            unsaved ? 'text-sky-700' : passed ? 'text-emerald-700' : 'text-gray-500'
+                          }`}>
+                            {entry.course_code}
+                          </span>
+                          <span className={`text-sm ${
+                            unsaved ? 'text-sky-900 font-medium' : passed ? 'text-emerald-900 font-medium' : 'text-gray-800'
+                          }`}>{name}</span>
+                          {unsaved && (
+                            <span className="mr-2 text-xs font-medium text-sky-600">
+                              {isNew ? '(חדש)' : '(עודכן)'}
+                            </span>
+                          )}
+                          {failed && (
+                            <span className="mr-2 text-xs text-amber-700">(לא עבר)</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            placeholder="ציון"
+                            value={entry.grade}
+                            disabled={historySaving}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setHistory(prev =>
+                                prev.map(h =>
+                                  h.course_code === entry.course_code
+                                    ? { ...h, grade: val === '' ? '' : Number(val) }
+                                    : h
+                                )
+                              );
+                            }}
+                            className={`w-16 text-center border rounded-lg p-1.5 text-sm font-semibold focus:outline-none focus:border-emerald-400 ${
+                              entry.grade === ''
+                                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                : unsaved
+                                  ? 'border-sky-300 bg-white text-sky-800'
+                                  : passed
+                                    ? 'border-emerald-300 bg-white text-emerald-800'
+                                    : 'border-gray-200 bg-white text-gray-700'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            disabled={historySaving}
+                            onClick={() => handleRemoveHistory(entry.course_code)}
+                            className="text-red-500 hover:bg-red-50 p-2 rounded-md transition-colors"
+                            aria-label="הסר קורס"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col items-end gap-2 pt-3 border-t border-gray-100">
+              {historyError && (
+                <p className="text-sm text-red-600 w-full text-right">{historyError}</p>
+              )}
+              <button
+                type="button"
+                disabled={historySaving || !hasPendingChanges}
+                onClick={handleSaveAll}
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold px-8 py-2.5 rounded-lg transition-colors shadow-sm"
+              >
+                {historySaving ? 'שומר...' : 'שמור'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Semesters */}
@@ -177,11 +507,13 @@ export default function CourseHistory() {
                   key={course.code}
                   className={`rounded-xl border p-4 flex flex-col gap-2 transition-all ${cardCls}`}
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start gap-2">
                     <span className="text-xs font-mono text-gray-400">{course.code}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>
-                      {badge.label}
-                    </span>
+                    <div className="flex flex-wrap gap-1 justify-end">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    </div>
                   </div>
 
                   <p className="font-semibold text-gray-800 text-sm leading-snug">{course.name}</p>
@@ -208,8 +540,11 @@ export default function CourseHistory() {
 
       {reviewingCourse && (
         <ReviewModal
-          course={reviewingCourse}
-          onClose={() => { setReviewingCourse(null); fetchRoadmap(); }}
+          course={{
+            name: reviewingCourse.name,
+            course_code: reviewingCourse.code ?? reviewingCourse.course_code,
+          }}
+          onClose={() => { setReviewingCourse(null); refreshAll(); }}
         />
       )}
     </div>

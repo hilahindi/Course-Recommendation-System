@@ -45,6 +45,8 @@ export const api = {
     apiClient.post(`/profile/${studentId}/history`, data),
   addHistoryBulk: async (studentId: number, data: unknown) =>
     apiClient.post(`/profile/${studentId}/history/bulk`, data),
+  deleteHistory: async (studentId: number, courseCode: number) =>
+    apiClient.delete(`/profile/${studentId}/history/${courseCode}`),
 
   // Recommendations (student id from X-Student-Id header; may take up to ~2 min)
   getRecommendations: async () =>

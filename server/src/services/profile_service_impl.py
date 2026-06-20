@@ -1,5 +1,7 @@
 from typing import List
 
+from fastapi import HTTPException, status
+
 from dtos import (
     PlannedCourseBase,
     PlannedCourseResponse,
@@ -49,6 +51,13 @@ class ProfileServiceImpl(ProfileService):
             student_id, bulk_create
         )
         return [StudentCourseHistoryResponse.model_validate(h) for h in histories]
+
+    def remove_history(self, student_id: int, course_code: int) -> None:
+        if not self._repository.remove_student_course_history(student_id, course_code):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course history entry not found",
+            )
 
     def get_schedule(self, student_id: int) -> List[PlannedCourseResponse]:
         return [

@@ -122,7 +122,7 @@ export default function Recommendations() {
           המלצות חכמות
         </h1>
         <p className="text-gray-500 max-w-2xl mx-auto">
-          בהתבסס על הקורסים שעברת, עומס היעד שלך ומטרות הקריירה, המערכת שלנו בנתה עבורך את המסלול המושלם.
+          בהתבסס על הקורסים שעברת ומטרות הקריירה, המערכת בנתה עבורך את המסלול המושלם.
         </p>
       </div>
 
@@ -189,6 +189,16 @@ export default function Recommendations() {
                   </div>
                   
                   <div className="flex flex-wrap gap-2 mb-4">
+                    {rec.in_track_bundle && (
+                      <span className="text-xs border border-emerald-300 bg-emerald-100 px-2 py-1 rounded-full text-emerald-800 font-medium">
+                        במקבץ שלך
+                      </span>
+                    )}
+                    {rec.prerequisites_met === false && rec.missing_prerequisites?.length > 0 && (
+                      <span className="text-xs border border-amber-300 bg-amber-50 px-2 py-1 rounded-full text-amber-800">
+                        דרישות קדם: {rec.missing_prerequisites.map((p: { name: string }) => p.name).join(', ')}
+                      </span>
+                    )}
                     <span className="text-xs border border-gray-200 bg-gray-100 px-2 py-1 rounded-full text-gray-500">
                       עומס: {rec.course.workload} שעות
                     </span>

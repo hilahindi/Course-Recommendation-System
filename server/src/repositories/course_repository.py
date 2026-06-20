@@ -1,7 +1,12 @@
 import asyncio
+import os
+import threading
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import List, Optional
+
+_catalog_sync_lock = threading.Lock()
+_catalog_synced = False
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
@@ -114,17 +119,29 @@ class CourseRepository:
             self._db.commit()
         return len(assignments)
 
-    def _get_or_create_skill(self, name: str) -> models.Skill:
-        skill = (
-            self._db.query(models.Skill).filter(models.Skill.name == name).first()
-        )
-        if not skill:
-            skill = models.Skill(name=name)
-            self._db.add(skill)
-            self._db.flush()
+    def _get_or_create_skill(
+        self, name: str, cache: dict[str, models.Skill] | None = None
+    ) -> models.Skill:
+        if cache is None:
+            cache = self._load_skill_cache()
+        skill = cache.get(name)
+        if skill is not None:
+            return skill
+        skill = models.Skill(name=name)
+        self._db.add(skill)
+        self._db.flush()
+        cache[name] = skill
         return skill
 
-    def sync_course_linked_skills(self, course: models.Course, skills_text: str) -> bool:
+    def _load_skill_cache(self) -> dict[str, models.Skill]:
+        return {skill.name: skill for skill in self._db.query(models.Skill).all()}
+
+    def sync_course_linked_skills(
+        self,
+        course: models.Course,
+        skills_text: str,
+        skill_cache: dict[str, models.Skill],
+    ) -> bool:
         from services.course_skills_by_name import parse_skill_names
 
         changed = False
@@ -133,7 +150,8 @@ class CourseRepository:
             changed = True
 
         skill_objects = [
-            self._get_or_create_skill(name) for name in parse_skill_names(skills_text)
+            self._get_or_create_skill(name, skill_cache)
+            for name in parse_skill_names(skills_text)
         ]
         existing_ids = {skill.id for skill in course.linked_skills}
         new_ids = {skill.id for skill in skill_objects}
@@ -146,14 +164,23 @@ class CourseRepository:
         """Apply catalog skills to all courses (text + linked Skill rows)."""
         from services.course_skills_by_name import resolve_skills_for_course_name
 
+        skill_cache = self._load_skill_cache()
         changed = False
+        pending_commits = 0
+        batch_size = int(os.getenv("CATALOG_SKILLS_COMMIT_BATCH", "20"))
+
         for course in self._db.query(models.Course).all():
             skills_text = resolve_skills_for_course_name(course.name or "")
             if not skills_text:
                 continue
-            if self.sync_course_linked_skills(course, skills_text):
+            if self.sync_course_linked_skills(course, skills_text, skill_cache):
                 changed = True
-        if changed:
+                pending_commits += 1
+                if pending_commits >= batch_size:
+                    self._db.commit()
+                    pending_commits = 0
+
+        if changed and pending_commits > 0:
             self._db.commit()
 
     def get_courses_with_skills_text(self) -> List[models.Course]:
@@ -407,8 +434,8 @@ class CourseRepository:
         by_name: dict[str, models.Course],
     ) -> None:
         from services.mandatory_curriculum_catalog import (
-            credits_to_workload,
             format_prerequisites,
+            spec_workload,
         )
 
         changed = False
@@ -417,7 +444,7 @@ class CourseRepository:
             category = self._curriculum_category(spec)
             course = self._resolve_curriculum_course(spec)
             if not course:
-                workload = credits_to_workload(spec.credits)
+                workload = spec_workload(spec)
                 course = models.Course(
                     course_code=spec.code,
                     name=spec.name,
@@ -444,7 +471,7 @@ class CourseRepository:
                 continue
             by_name[spec.name] = course
 
-            workload = credits_to_workload(spec.credits)
+            workload = spec_workload(spec)
             prereq_text = format_prerequisites(spec)
 
             if course.name != spec.name:
@@ -548,6 +575,24 @@ class CourseRepository:
 
         if changed:
             self._db.commit()
+
+    def ensure_catalog_synced(self) -> None:
+        """Run heavy catalog sync once per server process (not on every API call)."""
+        global _catalog_synced
+        if _catalog_synced:
+            return
+
+        from catalog_sync import get_sync_mode
+
+        if get_sync_mode() == "skip":
+            _catalog_synced = True
+            return
+
+        with _catalog_sync_lock:
+            if _catalog_synced:
+                return
+            self.ensure_track_course_links()
+            _catalog_synced = True
 
     def ensure_track_course_links(self) -> None:
         """Link catalog courses to each specialization track."""
@@ -667,7 +712,9 @@ class CourseRepository:
     def get_student_history(self, student_id: int) -> List[models.StudentCourseHistory]:
         return (
             self._db.query(models.StudentCourseHistory)
+            .options(joinedload(models.StudentCourseHistory.course))
             .filter(models.StudentCourseHistory.student_id == student_id)
+            .order_by(models.StudentCourseHistory.course_code)
             .all()
         )
 
@@ -721,6 +768,20 @@ class CourseRepository:
         for history in added_histories:
             self._db.refresh(history)
         return added_histories
+
+    def remove_student_course_history(
+        self, student_id: int, course_code: int
+    ) -> bool:
+        existing = (
+            self._db.query(models.StudentCourseHistory)
+            .filter_by(student_id=student_id, course_code=course_code)
+            .first()
+        )
+        if existing is None:
+            return False
+        self._db.delete(existing)
+        self._db.commit()
+        return True
 
     def get_planned_courses(self, student_id: int) -> List[models.PlannedCourse]:
         return (

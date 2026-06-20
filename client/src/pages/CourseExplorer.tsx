@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, getCacheEntry } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ReviewModal from '../components/ReviewModal';
 import CourseDetailModal from '../components/CourseDetailModal';
@@ -175,11 +174,16 @@ function PrerequisitesBox({ prerequisites, compact }: { prerequisites: string; c
 
 export default function CourseExplorer() {
   const { user } = useAuth();
-  const location = useLocation();
-  const [courses, setCourses] = useState<any[]>([]);
-  const [tracks, setTracks] = useState<any[]>([]);
-  const [passedCodes, setPassedCodes] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const userId = user?.user_id;
+  const [courses, setCourses] = useState<any[]>(() => getCacheEntry('courses') ?? []);
+  const [tracks, setTracks] = useState<any[]>(() => getCacheEntry<any>('metadata')?.tracks ?? []);
+  const [passedCodes, setPassedCodes] = useState<Set<number>>(() => {
+    const history = userId ? getCacheEntry<any[]>(`history:${userId}`) ?? [] : [];
+    return buildPassedCodes(history);
+  });
+  const [loading, setLoading] = useState(
+    () => !(getCacheEntry('courses') && getCacheEntry('metadata')),
+  );
   
   // Filters
   const [search, setSearch] = useState('');
@@ -203,12 +207,32 @@ export default function CourseExplorer() {
   };
 
   useEffect(() => {
+    if (!user) return;
+
+    const cachedCourses = getCacheEntry<any[]>('courses');
+    const cachedMeta = getCacheEntry<any>('metadata');
+    const cachedHistory = getCacheEntry<any[]>(`history:${user.user_id}`);
+
+    if (cachedCourses) setCourses(cachedCourses);
+    if (cachedMeta?.tracks) setTracks(cachedMeta.tracks);
+    if (cachedHistory) setPassedCodes(buildPassedCodes(cachedHistory));
+
+    if (cachedCourses && cachedMeta) {
+      setLoading(false);
+      if (!cachedHistory) {
+        api.getHistory(user.user_id).then((res) => {
+          setPassedCodes(buildPassedCodes(res.data));
+        }).catch(console.error);
+      }
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const [coursesRes, metaRes, histRes] = await Promise.all([
           api.getCourses(),
           api.getMetadata(),
-          user ? api.getHistory(user.user_id) : { data: [] }
+          api.getHistory(user.user_id),
         ]);
         setCourses(coursesRes.data);
         if (metaRes.data?.tracks) setTracks(metaRes.data.tracks);
@@ -220,7 +244,7 @@ export default function CourseExplorer() {
       }
     };
     fetchData();
-  }, [user, location.pathname]);
+  }, [user]);
 
   const courseInTrack = (course: { track_ids?: number[]; track_id?: number | null }, trackId: number) =>
     course.track_ids?.includes(trackId) || course.track_id === trackId;

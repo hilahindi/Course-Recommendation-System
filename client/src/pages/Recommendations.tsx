@@ -1,52 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, getCacheEntry } from '../services/api';
 import { Link } from 'react-router-dom';
 import ReviewModal from '../components/ReviewModal';
 
-function CourseRating({ courseCode, onClick }: { courseCode: number, onClick: () => void }) {
-  const [rating, setRating] = useState<number | null>(null);
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    api.getCourseReviews(courseCode).then(res => {
-      const reviews = res.data;
-      if (reviews.length > 0) {
-        const avg = reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / reviews.length;
-        setRating(avg);
-        setCount(reviews.length);
-      }
-    }).catch(console.error);
-  }, [courseCode]);
-
-  if (rating === null) return (
-    <button onClick={onClick} className="text-xs text-gray-500 hover:text-emerald-600 transition-colors bg-gray-50 px-2 py-1 border border-gray-200 rounded-full">
-      אין ביקורות עדיין. כתוב אחת!
-    </button>
-  );
-
+function CourseRating({ onClick }: { courseCode: number; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex items-center gap-1 text-sm bg-gray-50 hover:bg-emerald-50 px-3 py-1.5 border border-gray-200 hover:border-emerald-300 rounded-full transition-colors cursor-pointer">
-      <span className="text-yellow-400">⭐</span>
-      <span className="font-medium text-gray-800">{rating.toFixed(1)}/5</span>
-      <span className="text-gray-500 text-xs">({count} ביקורות)</span>
+    <button onClick={onClick} className="text-xs text-gray-500 hover:text-emerald-600 transition-colors bg-gray-50 px-2 py-1 border border-gray-200 rounded-full">
+      דרג קורס
     </button>
   );
 }
 
 export default function Recommendations() {
   const { user } = useAuth();
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>(
+    () => getCacheEntry<any[]>('recommendations') ?? [],
+  );
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !getCacheEntry('recommendations'));
   const [error, setError] = useState<string | null>(null);
   const [reviewCourse, setReviewCourse] = useState<any>(null);
 
-  const loadRecommendations = () => {
+  const loadRecommendations = (force = false) => {
     setLoading(true);
     setError(null);
     return api
-      .getRecommendations()
+      .getRecommendations({ force })
       .then(res => setRecommendations(res.data))
       .catch(err => {
         console.error(err);
@@ -86,7 +66,7 @@ export default function Recommendations() {
         <p className="text-gray-600 mb-6">{error}</p>
         <button
           type="button"
-          onClick={loadRecommendations}
+          onClick={() => loadRecommendations(true)}
           className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-medium"
         >
           נסי שוב
@@ -147,7 +127,7 @@ export default function Recommendations() {
               <div className="flex flex-wrap gap-3 justify-center">
                 <button
                   type="button"
-                  onClick={loadRecommendations}
+                  onClick={() => loadRecommendations(true)}
                   className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/30"
                 >
                   רענן המלצות

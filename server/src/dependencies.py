@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
@@ -50,6 +52,11 @@ def get_course_repository(db: Session = Depends(get_db)) -> CourseRepository:
 
 
 def get_embedding_service() -> EmbeddingService:
+    return _get_embedding_service_singleton()
+
+
+@lru_cache
+def _get_embedding_service_singleton() -> EmbeddingService:
     return LocalEmbeddingServiceImpl()
 
 

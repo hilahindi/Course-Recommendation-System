@@ -15,6 +15,8 @@ from interfaces.recommendation_service import RecommendationService
 from repositories.course_repository import CourseRepository
 from services.course_service_impl import course_to_base
 from services.job_pipeline_service_impl import SKILL_KEYWORDS
+from services.market_refresh import refresh_market_data
+from services.recommendation_cache import get_or_compute
 from services.seminar_track_catalog import (
     is_seminar_course,
     is_track_seminar_allowed,
@@ -65,9 +67,34 @@ class RecommendationServiceImpl(RecommendationService):
         self._repository = repository
         self._job_pipeline = job_pipeline
         self._embedding_service = embedding_service
+        self._defer_vector_commits = False
 
     async def get_personalized_recommendations(
         self, db_session: Session, student_id: int, limit: int = _TOP_N
+    ) -> list[dict]:
+        return await get_or_compute(
+            student_id,
+            limit,
+            lambda: self._compute_personalized_recommendations(
+                db_session, student_id, limit
+            ),
+        )
+
+    async def _compute_personalized_recommendations(
+        self, db_session: Session, student_id: int, limit: int
+    ) -> list[dict]:
+        self._defer_vector_commits = True
+        try:
+            return await self._build_personalized_recommendations(
+                db_session, student_id, limit
+            )
+        finally:
+            if self._defer_vector_commits:
+                self._repository.commit_session()
+            self._defer_vector_commits = False
+
+    async def _build_personalized_recommendations(
+        self, db_session: Session, student_id: int, limit: int
     ) -> list[dict]:
         profile = self._repository.get_student_profile(student_id)
         target_role = self._resolve_target_role_from_profile(profile)
@@ -185,15 +212,7 @@ class RecommendationServiceImpl(RecommendationService):
         return candidates[:limit]
 
     async def _refresh_market_data(self, db_session: Session, target_role: str) -> None:
-        try:
-            await self._job_pipeline.sync_from_adzuna(db_session, target_role)
-            self._job_pipeline.extract_skills_from_listings(db_session)
-            self._job_pipeline.vectorize_listings(db_session)
-        except Exception as exc:
-            db_session.rollback()
-            logger.warning(
-                "Job market sync skipped for role %r: %s", target_role, exc
-            )
+        await refresh_market_data(db_session, self._job_pipeline, target_role)
 
     def _resolve_industry_target_vector(
         self, db_session: Session, target_role: str
@@ -702,7 +721,9 @@ class RecommendationServiceImpl(RecommendationService):
             return None
 
         vector = self._embedding_service.get_embedding(text)
-        self._repository.update_course_feature_vector(course, vector)
+        self._repository.update_course_feature_vector(
+            course, vector, commit=not self._defer_vector_commits
+        )
         return vector
 
     def _resolve_target_role(self, student_id: int) -> str:

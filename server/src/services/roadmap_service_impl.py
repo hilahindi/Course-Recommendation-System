@@ -26,6 +26,7 @@ from services.mandatory_curriculum_catalog import (
     CurriculumCourseSpec,
 )
 from services.elective_curriculum_catalog import ELECTIVE_CURRICULUM, LEGACY_ELECTIVE_CODES
+from services.roadmap_cache import get_or_compute as get_or_compute_roadmap
 from services.seminar_track_catalog import (
     LEGACY_SEMINAR_CODES,
     code_in_set,
@@ -227,6 +228,12 @@ class RoadmapServiceImpl:
     # ---------------------------------------------------------------- public
 
     async def build_roadmap(self, student_id: int, db_session: Session) -> dict:
+        return await get_or_compute_roadmap(
+            student_id,
+            lambda: self._build_roadmap(student_id, db_session),
+        )
+
+    async def _build_roadmap(self, student_id: int, db_session: Session) -> dict:
         passed_codes = self._passed_codes(student_id, db_session)
 
         # Compute semester for electives / fallback placement via the DAG

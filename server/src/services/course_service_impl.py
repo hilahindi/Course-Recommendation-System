@@ -16,6 +16,7 @@ from dtos import (
 from interfaces.course_service import CourseService
 from repositories.course_repository import CourseRepository
 from services.course_pipeline_service import CoursePipelineService
+from services.courses_list_cache import get_or_load_courses
 
 
 def course_to_base(course) -> CourseBase:
@@ -23,26 +24,35 @@ def course_to_base(course) -> CourseBase:
     from services.course_skills_by_name import parse_skill_names
 
     track_ids = [t.id for t in getattr(course, "tracks", []) or []]
-    prereq_codes = [p.course_code for p in getattr(course, "prerequisite_courses", []) or []]
-    linked = getattr(course, "linked_skills", None) or []
-    if linked:
-        skills_payload = [SkillBase.model_validate(s) for s in linked]
-    elif course.skills:
-        skills_payload = [
-            SkillBase(id=index, name=name)
-            for index, name in enumerate(parse_skill_names(course.skills), start=1)
-        ]
-    else:
-        skills_payload = []
+    prereq_codes = [
+        p.course_code for p in getattr(course, "prerequisite_courses", []) or []
+    ]
+    skills_payload = [
+        SkillBase(id=index, name=name)
+        for index, name in enumerate(parse_skill_names(course.skills or ""), start=1)
+    ]
 
-    base = CourseBase.model_validate(course)
-    return base.model_copy(
-        update={
-            "track_ids": track_ids,
-            "track_id": track_ids[0] if track_ids else base.track_id,
-            "prerequisite_course_codes": prereq_codes,
-            "skills": skills_payload,
-        }
+    return CourseBase(
+        course_code=course.course_code,
+        name=course.name,
+        category=course.category,
+        workload=course.workload or 0,
+        credits=float(course.credits or 3),
+        semester_hours=course.semester_hours or course.workload or 3,
+        mandatory_attendance=bool(course.mandatory_attendance),
+        prerequisites=course.prerequisites or "",
+        has_exam=course.has_exam if course.has_exam is not None else True,
+        final_task_description=course.final_task_description,
+        track_id=track_ids[0] if track_ids else course.track_id,
+        track_ids=track_ids,
+        prerequisite_course_codes=prereq_codes,
+        day_of_week=course.day_of_week,
+        start_time=course.start_time,
+        end_time=course.end_time,
+        room=course.room,
+        lecturer=course.lecturer,
+        occurrences=[],
+        skills=skills_payload,
     )
 
 
@@ -77,7 +87,9 @@ class CourseServiceImpl(CourseService):
         self._pipeline = pipeline
 
     def list_courses(self) -> List[CourseBase]:
-        return [course_to_base(course) for course in self._repository.get_courses()]
+        return get_or_load_courses(
+            lambda: [course_to_base(course) for course in self._repository.get_courses()]
+        )
 
     def get_yearly_mandatory_courses(self) -> Dict[int, List[int]]:
         return self._repository.get_yearly_mandatory_map()

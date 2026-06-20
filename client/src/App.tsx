@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { api } from './services/api';
+import { api, getCacheEntry } from './services/api';
 import { useState, useEffect } from 'react';
 import Auth from './components/Auth';
 import Layout from './components/Layout';
@@ -13,8 +13,12 @@ import Dashboard from './pages/Dashboard';
 
 function App() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(() =>
+    user?.user_id ? getCacheEntry(`profile:${user.user_id}`) : null,
+  );
+  const [loading, setLoading] = useState(() =>
+    user?.user_id ? !getCacheEntry(`profile:${user.user_id}`) : true,
+  );
 
   useEffect(() => {
     if (user) {

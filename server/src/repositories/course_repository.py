@@ -10,7 +10,7 @@ _catalog_synced = False
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, noload, selectinload
 
 import models
 from dtos import (
@@ -34,9 +34,10 @@ class CourseRepository:
         return (
             self._db.query(models.Course)
             .options(
-                joinedload(models.Course.tracks),
-                joinedload(models.Course.prerequisite_courses),
-                joinedload(models.Course.linked_skills),
+                selectinload(models.Course.tracks),
+                selectinload(models.Course.prerequisite_courses),
+                noload(models.Course.linked_skills),
+                noload(models.Course.occurrences),
             )
             .all()
         )
@@ -271,9 +272,13 @@ class CourseRepository:
         self._db.commit()
 
     def update_course_feature_vector(
-        self, course: models.Course, vector: list[float]
+        self, course: models.Course, vector: list[float], *, commit: bool = True
     ) -> None:
         course.feature_vector = vector
+        if commit:
+            self._db.commit()
+
+    def commit_session(self) -> None:
         self._db.commit()
 
     def update_course_avg_rating(self, course_code: int, avg_rating: float) -> None:
@@ -717,6 +722,10 @@ class CourseRepository:
     def get_student_profile(self, student_id: int) -> models.StudentProfile:
         profile = (
             self._db.query(models.StudentProfile)
+            .options(
+                joinedload(models.StudentProfile.interested_tracks),
+                joinedload(models.StudentProfile.interested_job_roles),
+            )
             .filter(models.StudentProfile.student_id == student_id)
             .first()
         )
@@ -849,6 +858,17 @@ class CourseRepository:
     def get_planned_courses(self, student_id: int) -> List[models.PlannedCourse]:
         return (
             self._db.query(models.PlannedCourse)
+            .options(
+                joinedload(models.PlannedCourse.course).joinedload(
+                    models.Course.tracks
+                ),
+                joinedload(models.PlannedCourse.course).joinedload(
+                    models.Course.prerequisite_courses
+                ),
+                joinedload(models.PlannedCourse.course).joinedload(
+                    models.Course.linked_skills
+                ),
+            )
             .filter(models.PlannedCourse.student_id == student_id)
             .all()
         )

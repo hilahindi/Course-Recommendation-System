@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { cachedRequest, getCacheEntry, invalidateCache } from '../lib/queryCache';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -19,6 +20,34 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+function invalidateStudentData(studentId: number) {
+  invalidateCache(
+    `profile:${studentId}`,
+    `history:${studentId}`,
+    `schedule:${studentId}`,
+    'recommendations',
+    'roadmap',
+  );
+}
+
+async function cachedGet<T>(
+  key: string,
+  fetcher: () => Promise<{ data: T }>,
+  options?: { force?: boolean },
+) {
+  const data = await cachedRequest<T>(
+    key,
+    async () => {
+      const res = await fetcher();
+      return res.data;
+    },
+    options,
+  );
+  return { data };
+}
+
+export { getCacheEntry, invalidateCache };
+
 export const api = {
   // Auth
   login: async (data: { email: string; password: string }) =>
@@ -27,30 +56,51 @@ export const api = {
     apiClient.post('/register', data),
 
   // Metadata
-  getMetadata: async () => apiClient.get('/metadata/'),
+  getMetadata: async (options?: { force?: boolean }) =>
+    cachedGet('metadata', () => apiClient.get('/metadata/'), options),
 
   // Courses
-  getCourses: async () => apiClient.get('/courses/'),
-  getYearlyMandatoryCourses: async () => apiClient.get('/courses/yearly-mandatory'),
+  getCourses: async (options?: { force?: boolean }) =>
+    cachedGet('courses', () => apiClient.get('/courses/'), options),
+  getYearlyMandatoryCourses: async (options?: { force?: boolean }) =>
+    cachedGet('yearly-mandatory', () => apiClient.get('/courses/yearly-mandatory'), options),
 
   // Profile
-  getProfile: async (studentId: number) => apiClient.get(`/profile/${studentId}`),
-  updateProfile: async (studentId: number, data: unknown) =>
-    apiClient.put(`/profile/${studentId}`, data),
+  getProfile: async (studentId: number, options?: { force?: boolean }) =>
+    cachedGet(`profile:${studentId}`, () => apiClient.get(`/profile/${studentId}`), options),
+  updateProfile: async (studentId: number, data: unknown) => {
+    const res = await apiClient.put(`/profile/${studentId}`, data);
+    invalidateStudentData(studentId);
+    invalidateCache('recommendations', 'roadmap');
+    return res;
+  },
 
   // History
-  getHistory: async (studentId: number) =>
-    apiClient.get(`/profile/${studentId}/history`),
-  addHistory: async (studentId: number, data: unknown) =>
-    apiClient.post(`/profile/${studentId}/history`, data),
-  addHistoryBulk: async (studentId: number, data: unknown) =>
-    apiClient.post(`/profile/${studentId}/history/bulk`, data),
-  deleteHistory: async (studentId: number, courseCode: number) =>
-    apiClient.delete(`/profile/${studentId}/history/${courseCode}`),
+  getHistory: async (studentId: number, options?: { force?: boolean }) =>
+    cachedGet(`history:${studentId}`, () => apiClient.get(`/profile/${studentId}/history`), options),
+  addHistory: async (studentId: number, data: unknown) => {
+    const res = await apiClient.post(`/profile/${studentId}/history`, data);
+    invalidateStudentData(studentId);
+    return res;
+  },
+  addHistoryBulk: async (studentId: number, data: unknown) => {
+    const res = await apiClient.post(`/profile/${studentId}/history/bulk`, data);
+    invalidateStudentData(studentId);
+    return res;
+  },
+  deleteHistory: async (studentId: number, courseCode: number) => {
+    const res = await apiClient.delete(`/profile/${studentId}/history/${courseCode}`);
+    invalidateStudentData(studentId);
+    return res;
+  },
 
   // Recommendations (student id from X-Student-Id header; may take up to ~2 min)
-  getRecommendations: async () =>
-    apiClient.post('/recommendations/get', undefined, { timeout: 120_000 }),
+  getRecommendations: async (options?: { force?: boolean }) =>
+    cachedGet(
+      'recommendations',
+      () => apiClient.post('/recommendations/get', undefined, { timeout: 120_000 }),
+      options,
+    ),
 
   // Reviews
   getCourseReviews: async (courseCode: number) =>
@@ -82,13 +132,24 @@ export const api = {
   deleteAllCourseReviews: async () => apiClient.delete('/reviews/all'),
 
   // Roadmap
-  getRoadmap: async () => apiClient.get('/recommendations/roadmap'),
+  getRoadmap: async (options?: { force?: boolean }) =>
+    cachedGet(
+      'roadmap',
+      () => apiClient.get('/recommendations/roadmap'),
+      options,
+    ),
 
   // Schedule
-  getSchedule: (studentId: number) =>
-    apiClient.get(`/profile/${studentId}/schedule`),
-  addSchedule: (studentId: number, data: { course_code: number }) =>
-    apiClient.post(`/profile/${studentId}/schedule`, data),
-  removeSchedule: (studentId: number, courseCode: number) =>
-    apiClient.delete(`/profile/${studentId}/schedule/${courseCode}`),
+  getSchedule: (studentId: number, options?: { force?: boolean }) =>
+    cachedGet(`schedule:${studentId}`, () => apiClient.get(`/profile/${studentId}/schedule`), options),
+  addSchedule: async (studentId: number, data: { course_code: number }) => {
+    const res = await apiClient.post(`/profile/${studentId}/schedule`, data);
+    invalidateCache(`schedule:${studentId}`);
+    return res;
+  },
+  removeSchedule: async (studentId: number, courseCode: number) => {
+    const res = await apiClient.delete(`/profile/${studentId}/schedule/${courseCode}`);
+    invalidateCache(`schedule:${studentId}`);
+    return res;
+  },
 };

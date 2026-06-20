@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, getCacheEntry } from '../services/api';
 import Select from 'react-select';
 import ReviewModal from '../components/ReviewModal';
 
@@ -44,34 +44,49 @@ const MANDATORY_YEAR_LABELS: Record<number, string> = {
 
 export default function CourseHistory() {
   const { user } = useAuth();
-  const [roadmap, setRoadmap] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const userId = user?.user_id;
+  const [roadmap, setRoadmap] = useState<any>(() => getCacheEntry('roadmap'));
+  const [loading, setLoading] = useState(() => {
+    if (!userId) return true;
+    return !(
+      getCacheEntry('roadmap') &&
+      getCacheEntry('courses') &&
+      getCacheEntry(`history:${userId}`) &&
+      getCacheEntry('yearly-mandatory')
+    );
+  });
   const [error, setError] = useState<string | null>(null);
   const [reviewingCourse, setReviewingCourse] = useState<any>(null);
 
-  const [courses, setCourses] = useState<any[]>([]);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [savedHistory, setSavedHistory] = useState<HistoryEntry[]>([]);
-  const [yearlyCoursesMap, setYearlyCoursesMap] = useState<Record<number, number[]>>({});
+  const [courses, setCourses] = useState<any[]>(() => getCacheEntry('courses') ?? []);
+  const [history, setHistory] = useState<HistoryEntry[]>(() =>
+    userId ? getCacheEntry<HistoryEntry[]>(`history:${userId}`) ?? [] : [],
+  );
+  const [savedHistory, setSavedHistory] = useState<HistoryEntry[]>(() =>
+    userId ? getCacheEntry<HistoryEntry[]>(`history:${userId}`) ?? [] : [],
+  );
+  const [yearlyCoursesMap, setYearlyCoursesMap] = useState<Record<number, number[]>>(
+    () => getCacheEntry('yearly-mandatory') ?? {},
+  );
   const [selectedCourse, setSelectedCourse] = useState<number | ''>('');
   const [grade, setGrade] = useState('');
   const [historySaving, setHistorySaving] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [showHistoryEditor, setShowHistoryEditor] = useState(false);
 
-  const fetchRoadmap = useCallback(() => {
+  const fetchRoadmap = useCallback((force = false) => {
     if (!user) return Promise.resolve();
-    return api.getRoadmap()
+    return api.getRoadmap({ force })
       .then(res => setRoadmap(res.data))
       .catch(() => setError('לא ניתן לטעון את מפת הדרכים'));
   }, [user]);
 
-  const fetchHistoryData = useCallback(() => {
+  const fetchHistoryData = useCallback((force = false) => {
     if (!user) return Promise.resolve();
     return Promise.all([
-      api.getHistory(user.user_id),
-      api.getCourses(),
-      api.getYearlyMandatoryCourses(),
+      api.getHistory(user.user_id, { force }),
+      api.getCourses({ force }),
+      api.getYearlyMandatoryCourses({ force }),
     ])
       .then(([historyRes, coursesRes, yearlyRes]) => {
         const saved: HistoryEntry[] = historyRes.data.map((h: HistoryEntry) => ({
@@ -93,11 +108,11 @@ export default function CourseHistory() {
       .catch(() => setHistoryError('לא ניתן לטעון את היסטוריית הקורסים'));
   }, [user]);
 
-  const refreshAll = useCallback(() => {
+  const refreshAll = useCallback((force = false) => {
     if (!user) return;
     setLoading(true);
     setError(null);
-    Promise.all([fetchRoadmap(), fetchHistoryData()])
+    Promise.all([fetchRoadmap(force), fetchHistoryData(force)])
       .finally(() => setLoading(false));
   }, [user, fetchRoadmap, fetchHistoryData]);
 
@@ -177,7 +192,7 @@ export default function CourseHistory() {
         });
       }
 
-      await Promise.all([fetchHistoryData(), fetchRoadmap()]);
+      await Promise.all([fetchHistoryData(true), fetchRoadmap(true)]);
     } catch {
       setHistoryError('שגיאה בשמירה. נסי שוב.');
     } finally {

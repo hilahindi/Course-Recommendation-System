@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, getCacheEntry } from '../services/api';
 
 function yearLabel(y: number) {
   return y === 1 ? "א'" : y === 2 ? "ב'" : y === 3 ? "ג'" : "ד'";
@@ -10,14 +10,19 @@ function yearLabel(y: number) {
 export default function Profile() {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const userId = user?.user_id;
+  const [loading, setLoading] = useState(
+    () => !(getCacheEntry('metadata') && userId && getCacheEntry(`profile:${userId}`)),
+  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  const [savedProfile, setSavedProfile] = useState<any>(null);
-  const [metadata, setMetadata] = useState<{ tracks: any[]; job_roles: any[] }>({
-    tracks: [],
-    job_roles: [],
+  const [savedProfile, setSavedProfile] = useState<any>(() =>
+    userId ? getCacheEntry(`profile:${userId}`) : null,
+  );
+  const [metadata, setMetadata] = useState<{ tracks: any[]; job_roles: any[] }>(() => {
+    const cached = getCacheEntry<any>('metadata');
+    return { tracks: cached?.tracks ?? [], job_roles: cached?.job_roles ?? [] };
   });
 
   const [degree, setDegree] = useState('מדעי המחשב');

@@ -1,17 +1,38 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, getCacheEntry } from '../services/api';
 import { Link } from 'react-router-dom';
 import CourseDetailModal from '../components/CourseDetailModal';
 import ReviewModal from '../components/ReviewModal';
 
+function dashboardHasWarmCache(userId: number) {
+  return Boolean(
+    getCacheEntry(`profile:${userId}`) &&
+    getCacheEntry('recommendations') &&
+    getCacheEntry(`schedule:${userId}`) &&
+    getCacheEntry('roadmap'),
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<any>(null);
-  const [roadmapSummary, setRoadmapSummary] = useState<any>(null);
-  const [topRecommendation, setTopRecommendation] = useState<any>(null);
-  const [schedule, setSchedule] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const userId = user?.user_id;
+  const [profile, setProfile] = useState<any>(() =>
+    userId ? getCacheEntry(`profile:${userId}`) : null,
+  );
+  const [roadmapSummary, setRoadmapSummary] = useState<any>(
+    () => getCacheEntry<any>('roadmap')?.summary ?? null,
+  );
+  const [topRecommendation, setTopRecommendation] = useState<any>(() => {
+    const recs = getCacheEntry<any[]>('recommendations');
+    return recs?.[0] ?? null;
+  });
+  const [schedule, setSchedule] = useState<any[]>(() =>
+    userId ? getCacheEntry<any[]>(`schedule:${userId}`) ?? [] : [],
+  );
+  const [loading, setLoading] = useState(() =>
+    userId ? !dashboardHasWarmCache(userId) : true,
+  );
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [reviewCourse, setReviewCourse] = useState<any>(null);
 
@@ -21,7 +42,7 @@ export default function Dashboard() {
       try {
         const [profileRes, recsRes, schedRes, roadmapRes] = await Promise.all([
           api.getProfile(user.user_id),
-          api.getRecommendations(user.user_id),
+          api.getRecommendations(),
           api.getSchedule(user.user_id),
           api.getRoadmap(),
         ]);

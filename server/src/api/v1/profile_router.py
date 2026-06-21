@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends
 from typing import List
 
 from database import get_db
-from dependencies import get_job_pipeline_service, get_profile_service
+from dependencies import (
+    get_job_pipeline_service,
+    get_profile_service,
+    verify_student_access,
+)
 from dtos import (
     PlannedCourseBase,
     PlannedCourseResponse,
@@ -18,7 +22,11 @@ from services.cache_invalidation import invalidate_student_caches
 from services.market_refresh import refresh_market_data, target_role_from_job_role_ids
 from sqlalchemy.orm import Session
 
-router = APIRouter(prefix="/api/v1/profile", tags=["profile"])
+router = APIRouter(
+    prefix="/api/v1/profile",
+    tags=["profile"],
+    dependencies=[Depends(verify_student_access)],
+)
 
 
 def _job_role_ids(profile: StudentProfileResponse) -> tuple[int, ...]:

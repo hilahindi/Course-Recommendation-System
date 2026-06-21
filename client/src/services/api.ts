@@ -10,8 +10,8 @@ apiClient.interceptors.request.use((config) => {
   if (stored) {
     try {
       const user = JSON.parse(stored);
-      if (user?.user_id != null) {
-        config.headers['X-Student-Id'] = String(user.user_id);
+      if (user?.access_token) {
+        config.headers['Authorization'] = `Bearer ${user.access_token}`;
       }
     } catch {
       /* ignore invalid stored user */
@@ -19,6 +19,20 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Expired/invalid token -> clear session and force re-login.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('user');
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 function invalidateStudentData(studentId: number) {
   invalidateCache(

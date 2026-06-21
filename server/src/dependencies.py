@@ -1,9 +1,11 @@
 from functools import lru_cache
 
 from fastapi import Depends, Header, HTTPException
+from jose import JWTError
 from sqlalchemy.orm import Session
 
 import models
+from auth import decode_access_token
 from database import get_db
 from interfaces.adzuna_sync_service import AdzunaSyncService
 from interfaces.course_service import CourseService
@@ -28,13 +30,36 @@ from services.roadmap_service_impl import RoadmapServiceImpl
 
 
 def get_current_student_id(
-    x_student_id: int = Header(..., alias="X-Student-Id"),
+    authorization: str = Header(None),
     db: Session = Depends(get_db),
 ) -> int:
-    student = db.query(models.Student).filter(models.Student.id == x_student_id).first()
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=401, detail="Missing or invalid Authorization header"
+        )
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        student_id = decode_access_token(token)
+    except (JWTError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if not student:
-        raise HTTPException(status_code=401, detail="Invalid or missing student credentials")
-    return x_student_id
+        raise HTTPException(status_code=401, detail="Invalid student credentials")
+    return student_id
+
+
+def verify_student_access(
+    student_id: int,
+    auth_id: int = Depends(get_current_student_id),
+) -> int:
+    """Ensure the authenticated student matches the student_id in the request path."""
+    if student_id != auth_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to access another student's data",
+        )
+    return student_id
 
 
 def get_course_repository(db: Session = Depends(get_db)) -> CourseRepository:

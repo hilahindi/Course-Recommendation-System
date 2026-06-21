@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import bcrypt
 
 import models
+from auth import create_access_token
 from database import get_db
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
@@ -59,6 +60,8 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 
     return {
         "message": "Login successful",
+        "access_token": create_access_token(db_user.id),
+        "token_type": "bearer",
         "user_id": db_user.id,
         "name": db_user.name,
     }

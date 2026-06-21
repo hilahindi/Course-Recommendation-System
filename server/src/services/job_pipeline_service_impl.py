@@ -88,7 +88,9 @@ class JobPipelineServiceImpl(JobPipelineService):
         if not industry_jobs:
             return 0
 
-        await CourseRepository(db_session).bulk_update_industry_jobs(industry_jobs)
+        await CourseRepository(db_session).bulk_update_industry_jobs(
+            industry_jobs, search_role=search_title
+        )
         return len(industry_jobs)
 
     def extract_skills_from_listings(self, db_session: Session) -> int:

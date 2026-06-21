@@ -125,10 +125,6 @@ def seed_data():
             mandatory_attendance=False,  # ערך דיפולטיבי
             prerequisites="", 
             track_id=None,
-            day_of_week=course_data.get("day_of_week", ""),
-            start_time=course_data.get("start_time", ""),
-            end_time=course_data.get("end_time", ""),
-            room=course_data.get("room", ""),
             lecturer=course_data.get("lecturer", "")
         )
         courses_to_insert.append(new_course)

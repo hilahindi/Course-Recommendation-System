@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session, joinedload, noload, selectinload
 
 import models
 from dtos import (
-    CourseOccurrenceSchema,
     CourseReviewCreate,
     StudentCourseHistoryBulkCreate,
     StudentCourseHistoryCreate,
@@ -37,7 +36,6 @@ class CourseRepository:
                 selectinload(models.Course.tracks),
                 selectinload(models.Course.prerequisite_courses),
                 noload(models.Course.linked_skills),
-                noload(models.Course.occurrences),
             )
             .all()
         )
@@ -376,23 +374,6 @@ class CourseRepository:
             if course:
                 course.avg_rating = averages.get(course_code, 0.0)
         self._db.commit()
-
-    def add_course_occurrence(
-        self, course_code: int, occurrence: CourseOccurrenceSchema
-    ) -> models.CourseOccurrence:
-        db_occurrence = models.CourseOccurrence(
-            course_code=course_code,
-            day_of_week=occurrence.day_of_week,
-            start_time=occurrence.start_time,
-            end_time=occurrence.end_time,
-            room=occurrence.room,
-            lecturer=occurrence.lecturer,
-            occurrence_type=occurrence.occurrence_type,
-        )
-        self._db.add(db_occurrence)
-        self._db.commit()
-        self._db.refresh(db_occurrence)
-        return db_occurrence
 
     def add_course_prerequisite(
         self, course_code: int, prerequisite_code: int
@@ -747,24 +728,8 @@ class CourseRepository:
             profile.degree = profile_update.degree
         if profile_update.year_of_study is not None:
             profile.year_of_study = profile_update.year_of_study
-        if profile_update.available_days is not None:
-            profile.available_days = profile_update.available_days
         if profile_update.onboarding_completed is not None:
             profile.onboarding_completed = profile_update.onboarding_completed
-
-        if profile_update.availabilities is not None:
-            self._db.query(models.StudentAvailability).filter(
-                models.StudentAvailability.profile_id == profile.id
-            ).delete()
-            for avail in profile_update.availabilities:
-                self._db.add(
-                    models.StudentAvailability(
-                        profile_id=profile.id,
-                        day_of_week=avail.day_of_week,
-                        start_time=avail.start_time,
-                        end_time=avail.end_time,
-                    )
-                )
 
         profile.interested_tracks = (
             self._db.query(models.Track)
@@ -904,20 +869,28 @@ class CourseRepository:
 
     # --- Industry jobs (Adzuna sync) ---
 
-    async def bulk_update_industry_jobs(self, jobs: list[dict]) -> None:
-        await asyncio.to_thread(self._bulk_update_industry_jobs_sync, jobs)
+    async def bulk_update_industry_jobs(
+        self, jobs: list[dict], search_role: str | None = None
+    ) -> None:
+        await asyncio.to_thread(
+            self._bulk_update_industry_jobs_sync, jobs, search_role
+        )
 
-    def _bulk_update_industry_jobs_sync(self, jobs: list[dict]) -> None:
+    def _bulk_update_industry_jobs_sync(
+        self, jobs: list[dict], search_role: str | None = None
+    ) -> None:
         if not jobs:
             return
 
         now = datetime.now(timezone.utc)
+        role = (search_role or "").strip() or None
         rows = [
             {
                 "id": str(job["id"]),
                 "title": job["title"],
                 "description": job["description"],
                 "updated_at": now,
+                "search_role": role,
             }
             for job in jobs
         ]
@@ -929,16 +902,22 @@ class CourseRepository:
                 "title": stmt.excluded.title,
                 "description": stmt.excluded.description,
                 "updated_at": stmt.excluded.updated_at,
+                "search_role": stmt.excluded.search_role,
             },
         )
         try:
             self._db.execute(stmt)
             current_ids = [str(job["id"]) for job in jobs]
-            (
-                self._db.query(models.IndustryJob)
-                .filter(models.IndustryJob.id.notin_(current_ids))
-                .delete(synchronize_session=False)
+            # Prune only this role's stale listings; keep other roles' rows so
+            # two users with different target roles don't clobber each other.
+            prune = self._db.query(models.IndustryJob).filter(
+                models.IndustryJob.id.notin_(current_ids)
             )
+            if role is not None:
+                prune = prune.filter(models.IndustryJob.search_role == role)
+            else:
+                prune = prune.filter(models.IndustryJob.search_role.is_(None))
+            prune.delete(synchronize_session=False)
             self._db.commit()
         except Exception:
             self._db.rollback()

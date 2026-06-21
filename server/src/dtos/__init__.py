@@ -1,7 +1,6 @@
 from dtos.schemas import (
     AverageFeatureVectorResponse,
     CourseBase,
-    CourseOccurrenceSchema,
     CoursePipelineSeedResult,
     CoursePipelineStepResult,
     CourseReviewBulkCreate,
@@ -16,7 +15,6 @@ from dtos.schemas import (
     PlannedCourseResponse,
     RecommendationResponse,
     SkillBase,
-    StudentAvailabilitySchema,
     StudentCourseHistoryBulkCreate,
     StudentCourseHistoryCreate,
     StudentCourseHistoryResponse,
@@ -28,7 +26,6 @@ from dtos.schemas import (
 __all__ = [
     "AverageFeatureVectorResponse",
     "CourseBase",
-    "CourseOccurrenceSchema",
     "CoursePipelineSeedResult",
     "CoursePipelineStepResult",
     "CourseReviewBulkCreate",
@@ -43,7 +40,6 @@ __all__ = [
     "PlannedCourseResponse",
     "RecommendationResponse",
     "SkillBase",
-    "StudentAvailabilitySchema",
     "StudentCourseHistoryBulkCreate",
     "StudentCourseHistoryCreate",
     "StudentCourseHistoryResponse",

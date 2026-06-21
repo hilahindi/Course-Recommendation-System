@@ -27,29 +27,6 @@ class JobRoleBase(BaseModel):
         from_attributes = True
 
 
-class CourseOccurrenceSchema(BaseModel):
-    id: Optional[int] = None
-    day_of_week: str
-    start_time: str
-    end_time: str
-    room: Optional[str] = None
-    lecturer: Optional[str] = None
-    occurrence_type: Optional[str] = "הרצאה"
-
-    class Config:
-        from_attributes = True
-
-
-class StudentAvailabilitySchema(BaseModel):
-    id: Optional[int] = None
-    day_of_week: str
-    start_time: str
-    end_time: str
-
-    class Config:
-        from_attributes = True
-
-
 class CourseBase(BaseModel):
     course_code: int
     name: str
@@ -64,12 +41,7 @@ class CourseBase(BaseModel):
     final_task_description: Optional[str] = None
     track_id: Optional[int] = None
     track_ids: List[int] = Field(default_factory=list)
-    day_of_week: Optional[str] = None
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    room: Optional[str] = None
     lecturer: Optional[str] = None
-    occurrences: List[CourseOccurrenceSchema] = []
     skills: List[SkillBase] = Field(default_factory=list, validation_alias="linked_skills")
 
     @field_validator("skills", mode="before")
@@ -122,8 +94,6 @@ class StudentProfileUpdate(BaseModel):
     interested_job_role_ids: List[int]
     degree: Optional[str] = "Computer Science"
     year_of_study: Optional[int] = 1
-    available_days: Optional[str] = ""
-    availabilities: Optional[List[StudentAvailabilitySchema]] = None
     onboarding_completed: Optional[bool] = False
 
 
@@ -134,8 +104,6 @@ class StudentProfileResponse(BaseModel):
     needs_flexible_attendance: bool
     degree: str
     year_of_study: int
-    available_days: str
-    availabilities: List[StudentAvailabilitySchema] = []
     onboarding_completed: bool
     interested_tracks: List[TrackBase] = []
     interested_job_roles: List[JobRoleBase] = []

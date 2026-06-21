@@ -77,18 +77,11 @@ class Course(Base):
     mandatory_attendance = Column(Boolean, default=False)
     prerequisites = Column(String, default="")
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=True)
-    day_of_week = Column(String, nullable=True)
-    start_time = Column(String, nullable=True)
-    end_time = Column(String, nullable=True)
-    room = Column(String, nullable=True)
     lecturer = Column(String, nullable=True)
     skills = Column(Text, nullable=True)
     feature_vector = Column(JSON, nullable=True)
     avg_rating = Column(Float, nullable=False, default=0.0)
 
-    occurrences = relationship(
-        "CourseOccurrence", back_populates="course", cascade="all, delete-orphan"
-    )
     linked_skills = relationship(
         "Skill", secondary=course_skill_link, back_populates="courses"
     )
@@ -102,21 +95,6 @@ class Course(Base):
     tracks = relationship(
         "Track", secondary=course_track_link, back_populates="courses"
     )
-
-
-class CourseOccurrence(Base):
-    __tablename__ = "course_occurrences"
-
-    id = Column(Integer, primary_key=True, index=True)
-    course_code = Column(Integer, ForeignKey("courses.course_code"))
-    day_of_week = Column(String)
-    start_time = Column(String)
-    end_time = Column(String)
-    room = Column(String, nullable=True)
-    lecturer = Column(String, nullable=True)
-    occurrence_type = Column(String, nullable=True)
-
-    course = relationship("Course", back_populates="occurrences")
 
 
 class Student(Base):
@@ -144,18 +122,6 @@ class StudentCourseHistory(Base):
     course = relationship("Course")
 
 
-class StudentAvailability(Base):
-    __tablename__ = "student_availabilities"
-
-    id = Column(Integer, primary_key=True, index=True)
-    profile_id = Column(Integer, ForeignKey("student_profiles.id"))
-    day_of_week = Column(String)
-    start_time = Column(String)
-    end_time = Column(String)
-
-    profile = relationship("StudentProfile", back_populates="availabilities")
-
-
 class StudentProfile(Base):
     __tablename__ = "student_profiles"
     id = Column(Integer, primary_key=True, index=True)
@@ -164,15 +130,11 @@ class StudentProfile(Base):
     needs_flexible_attendance = Column(Boolean, default=False)
     degree = Column(String, default="Computer Science")
     year_of_study = Column(Integer, default=1)
-    available_days = Column(String, default="")
     onboarding_completed = Column(Boolean, default=False)
 
     interested_tracks = relationship("Track", secondary=profile_track_link)
     interested_job_roles = relationship("JobRole", secondary=profile_jobrole_link)
     student = relationship("Student", back_populates="profile")
-    availabilities = relationship(
-        "StudentAvailability", back_populates="profile", cascade="all, delete-orphan"
-    )
 
 
 class Skill(Base):
@@ -203,6 +165,8 @@ class IndustryJob(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False)
     extracted_skills = Column(Text, nullable=True)
     feature_vector = Column(JSON, nullable=True)
+    # Target role this listing was fetched for; scopes market data per user goal.
+    search_role = Column(String, nullable=True, index=True)
 
 
 class CourseReview(Base):

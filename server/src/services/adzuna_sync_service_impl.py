@@ -110,6 +110,8 @@ class AdzunaSyncServiceImpl(AdzunaSyncService):
         ]
 
         if jobs:
-            await self._repository.bulk_update_industry_jobs(jobs)
+            await self._repository.bulk_update_industry_jobs(
+                jobs, search_role=self.resolve_search_what(keyword)
+            )
 
         return len(jobs)

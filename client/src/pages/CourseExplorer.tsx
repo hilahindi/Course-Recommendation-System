@@ -407,13 +407,6 @@ export default function CourseExplorer() {
                   אין דרישות קדם
                 </div>
               )}
-
-              {(course.day_of_week || course.start_time) && (
-                <div className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1 mb-2 w-full text-center">
-                  {course.day_of_week || 'טרם נקבע'}
-                  {course.start_time ? ` · ${course.start_time}–${course.end_time}` : ''}
-                </div>
-              )}
             </div>
           ))}
           {filteredCourses.length === 0 && (

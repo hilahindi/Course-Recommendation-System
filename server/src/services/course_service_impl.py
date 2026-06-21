@@ -46,12 +46,7 @@ def course_to_base(course) -> CourseBase:
         track_id=track_ids[0] if track_ids else course.track_id,
         track_ids=track_ids,
         prerequisite_course_codes=prereq_codes,
-        day_of_week=course.day_of_week,
-        start_time=course.start_time,
-        end_time=course.end_time,
-        room=course.room,
         lecturer=course.lecturer,
-        occurrences=[],
         skills=skills_payload,
     )
 

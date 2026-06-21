@@ -6,6 +6,7 @@ from collections import Counter
 
 import numpy as np
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import models
@@ -217,10 +218,12 @@ class RecommendationServiceImpl(RecommendationService):
     def _resolve_industry_target_vector(
         self, db_session: Session, target_role: str
     ) -> tuple[list[float], _MarketSkillContext]:
+        role_filter = func.lower(models.IndustryJob.search_role) == target_role.strip().lower()
         vectors = [
             np.asarray(job.feature_vector, dtype=np.float64)
             for job in db_session.query(models.IndustryJob)
             .filter(models.IndustryJob.feature_vector.isnot(None))
+            .filter(role_filter)
             .all()
             if job.feature_vector and not np.allclose(job.feature_vector, 0.0)
         ]
@@ -245,6 +248,7 @@ class RecommendationServiceImpl(RecommendationService):
             .filter(
                 models.IndustryJob.extracted_skills.isnot(None),
                 models.IndustryJob.extracted_skills != "",
+                func.lower(models.IndustryJob.search_role) == target_role.strip().lower(),
             )
             .all()
         )

@@ -49,6 +49,7 @@ _INDUSTRY_JOBS_REQUIRED_COLUMNS = frozenset(
         "updated_at",
         "extracted_skills",
         "feature_vector",
+        "search_role",
     }
 )
 _INDUSTRY_JOBS_COLUMN_ALTER = {
@@ -57,6 +58,9 @@ _INDUSTRY_JOBS_COLUMN_ALTER = {
     ),
     "feature_vector": (
         "ALTER TABLE industry_jobs ADD COLUMN IF NOT EXISTS feature_vector JSONB"
+    ),
+    "search_role": (
+        "ALTER TABLE industry_jobs ADD COLUMN IF NOT EXISTS search_role VARCHAR"
     ),
 }
 

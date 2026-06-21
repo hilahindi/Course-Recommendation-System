@@ -185,9 +185,6 @@ export default function Recommendations() {
                     <span className="text-xs border border-gray-200 bg-gray-100 px-2 py-1 rounded-full text-gray-500">
                       נוכחות: {rec.course.mandatory_attendance ? 'חובה' : 'גמיש'}
                     </span>
-                    <span className="text-xs border border-teal-200 bg-teal-50 px-2 py-1 rounded-full text-teal-700">
-                      {rec.course.day_of_week || 'טרם נקבע'} {rec.course.start_time ? `${rec.course.start_time}-${rec.course.end_time}` : ''}
-                    </span>
                   </div>
                   
                   {rec.course.skills?.length > 0 && (

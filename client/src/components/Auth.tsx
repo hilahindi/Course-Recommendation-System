@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
-export default function Auth({ onLogin }: { onLogin?: () => void }) {
+export default function Auth() {
   const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');

@@ -23,7 +23,7 @@ models.Base.metadata.create_all(bind=engine)
 def extract_all_courses(base_directory):
     parsed_courses = {}
     
-    # נוודא שהתיקייה הראשית קיימת
+    # Make sure the base directory exists
     if not os.path.exists(base_directory):
         print(f"Directory {base_directory} not found.")
         return []
@@ -36,33 +36,33 @@ def extract_all_courses(base_directory):
         'room': r"חדר לימוד:\s*(.*?)(?:\s\s+|\n|$)"
     }
 
-    # os.walk סורק את התיקייה הראשית וכל תתי-התיקיות שקיימות בתוכה
+    # os.walk scans the base directory and all of its subdirectories
     for root, dirs, files in os.walk(base_directory):
         
-        # --- תוספת חדשה: חילוץ שם התיקייה הנוכחית (למשל "חובה א") ---
+        # --- Extract the current folder name (e.g. "Mandatory A") ---
         folder_name = os.path.basename(root)
         # -------------------------------------------------------------
 
         for filename in files:
             if filename.endswith(".txt"):
-                # מחבר את הנתיב המלא לקובץ
+                # Build the full path to the file
                 file_path = os.path.join(root, filename)
                 
                 with open(file_path, 'r', encoding='utf-8') as file:
                     content = file.read()
                     
-                    # 1. חילוץ שם הקורס
+                    # 1. Extract the course name
                     name_match = re.search(r'קורס\s+(.+?)\s+שנה"ל', content)
                     course_name = name_match.group(1).strip() if name_match else None
                     
-                    # 2. חילוץ מספר הקורס (7 ספרות ראשונות)
+                    # 2. Extract the course code (first 7 digits)
                     code_match = re.search(r'קבוצה\s*:\s*(\d{7})', content)
                     course_code = int(code_match.group(1)) if code_match else None
                     
                     if course_name and course_code:
-                        # שימוש במילון כדי למנוע כפילויות של קורס שיש לו כמה קבוצות במערכת
+                        # Use a dict to avoid duplicates when a course has several groups
                         if course_code not in parsed_courses:
-                            # חלוקה לבלוקים לפי "קורס מסוג" כדי לחלץ את הנתונים הנוספים (כמו ב-extract.py)
+                            # Split into blocks by the course-type marker to extract extra fields (like extract.py)
                             blocks = re.split(r"קורס\s+מסוג", content)
                             
                             lecturer, day, start_time, end_time, room = "", "", "", "", ""
@@ -81,7 +81,7 @@ def extract_all_courses(base_directory):
                             parsed_courses[course_code] = {
                                 "course_code": course_code,
                                 "name": course_name,
-                                "category": folder_name, # <-- הוספנו את הקטגוריה למילון
+                                "category": folder_name, # <-- add the category to the dict
                                 "day_of_week": day,
                                 "start_time": start_time,
                                 "end_time": end_time,
@@ -96,23 +96,23 @@ def seed_data():
 
     print("Clearing old data and scanning all text files for new course data...")
     
-    # מחיקת הנתונים הישנים מהטבלאות כדי למנוע כפילויות
+    # Delete old data from the tables to avoid duplicates
     from sqlalchemy import text
     db.execute(text("TRUNCATE TABLE courses, tracks CASCADE;"))
     db.commit()
 
-    # יצירת מסלולי ההתמחות
+    # Create the specialization tracks
     track_web = models.Track(name="ממשקי משתמש")
     track_cyber = models.Track(name="סייבר")
     track_data = models.Track(name="למידת מכונה")
     db.add_all([track_web, track_cyber, track_data])
     db.commit() 
 
-    # הגדרת הנתיב לתיקיית הנתונים הראשית (שמכילה את כל שאר התיקיות)
-    # ודאי שזהו הנתיב הנכון מאיפה שאת מריצה את הסקריפט
+    # Define the path to the base data directory (which contains all other folders)
+    # Make sure this is the correct path relative to where you run the script
     base_data_path = str(DATA_DIR) 
     
-    # קריאה לפונקציה החדשה שסורקת הכל
+    # Call the function that scans everything
     all_courses_data = extract_all_courses(base_data_path)
     
     courses_to_insert = []
@@ -120,9 +120,9 @@ def seed_data():
         new_course = models.Course(
             course_code=course_data["course_code"],
             name=course_data["name"],
-            category=course_data.get("category", ""), # <-- הזרקת הקטגוריה ל-DB
-            workload=3,                  # ערך דיפולטיבי
-            mandatory_attendance=False,  # ערך דיפולטיבי
+            category=course_data.get("category", ""), # <-- inject the category into the DB
+            workload=3,                  # default value
+            mandatory_attendance=False,  # default value
             prerequisites="", 
             track_id=None,
             lecturer=course_data.get("lecturer", "")

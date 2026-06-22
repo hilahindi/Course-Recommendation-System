@@ -10,6 +10,7 @@ import CourseHistory from './pages/CourseHistory';
 import Onboarding from './pages/Onboarding';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
+import Admin from './pages/Admin';
 
 function App() {
   const { user } = useAuth();
@@ -42,7 +43,7 @@ function App() {
         <div className="pb-10 text-center">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-700">AfekAdvisor</h1>
         </div>
-        <Auth onLogin={() => { }} />
+        <Auth />
       </div>
     );
   }
@@ -65,6 +66,10 @@ function App() {
         <Route path="/questionnaire" element={<Profile />} />
         <Route path="/explorer" element={<CourseExplorer />} />
         <Route path="/history" element={<CourseHistory />} />
+        <Route
+          path="/admin"
+          element={user.role === 'admin' ? <Admin /> : <Navigate to="/" replace />}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

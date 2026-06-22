@@ -102,7 +102,7 @@ export default function Profile() {
         <p className="text-gray-500 mt-2">ניהול פרטים אקדמיים ומטרות קריירה</p>
       </header>
 
-      {/* Summary cards — same layout as Dashboard "ההעדפות שלך" */}
+      {/* Summary cards — same layout as the Dashboard "Your preferences" section */}
       <div className="glass-panel p-4 sm:p-6">
         <h2 className="text-xl font-semibold mb-6">ההעדפות שלך</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -4,7 +4,7 @@ from services.mandatory_curriculum_catalog import CurriculumCourseSpec
 
 # Legacy DB course codes → canonical Afeka syllabus codes
 LEGACY_ELECTIVE_CODES: dict[int, int] = {
-    10200: 10208,  # פיתוח ממשקי משתמש
+    10200: 10208,  # UI development
 }
 
 # Canonical names used in prerequisite strings
@@ -17,7 +17,7 @@ PREREQ_NAME_ALIASES: dict[str, str] = {
 }
 
 ELECTIVE_CURRICULUM: tuple[CurriculumCourseSpec, ...] = (
-    # --- סמינרים (2.5 נ"ז) — Afeka syllabus codes ---
+    # --- Seminars (2.5 credits) — Afeka syllabus codes ---
     CurriculumCourseSpec(
         11015,
         "סמינר במדעי המחשב",
@@ -53,10 +53,10 @@ ELECTIVE_CURRICULUM: tuple[CurriculumCourseSpec, ...] = (
         category="seminar",
         prereq_and=("עקרונות שפות תכנות",),
     ),
-    # --- קורסי עזר / קדם ---
+    # --- Helper / prerequisite courses ---
     CurriculumCourseSpec(92101, "למידה חישובית", 3, category="elective"),
     CurriculumCourseSpec(92103, "הסקה סטטיסטית", 3, category="elective"),
-    # --- קורסי בחירה ---
+    # --- Elective courses ---
     CurriculumCourseSpec(
         92110,
         "סטטיסטיקה",
@@ -301,12 +301,12 @@ ELECTIVE_CURRICULUM: tuple[CurriculumCourseSpec, ...] = (
         prereq_or_groups=(("סטטיסטיקה", "הסקה סטטיסטית"),),
         prereq_and=("תכנות מונחה עצמים",),
     ),
-    # --- קורסי בחירה נוספים ---
+    # --- Additional elective courses ---
     CurriculumCourseSpec(92150, "אבטחת ממשקי משתמש ופרטיות", 3, category="elective",
                          prereq_and=("תכנות מונחה עצמים",)),
     CurriculumCourseSpec(92151, "פיתוח תוכנה מונחה בינה מלאכותית למפתחים", 3, category="elective",
                          prereq_and=("תכנות מונחה עצמים",)),
-    # --- סמינר נוסף ---
+    # --- Additional seminar ---
     CurriculumCourseSpec(92006, "סמינר בשיטות פיתוח", 2.5, category="seminar",
                          prereq_and=("מבוא להנדסת תוכנה",)),
     # --- elective1 ---

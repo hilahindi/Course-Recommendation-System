@@ -769,7 +769,7 @@ class RoadmapServiceImpl:
 
         placed = self._index_planned_semesters(semesters)
 
-        # Track elective prerequisites of gateway courses (e.g. אפיון ממשקי משתמש) → year 2.
+        # Track elective prerequisites of gateway courses (e.g. UI specification) → year 2.
         gateway_prereqs: set[int] = set()
         for gateway in gateway_codes:
             for prereq in self._dag.prereqs_of(gateway):

@@ -59,6 +59,9 @@ export default function Navbar() {
 
   if (!user) return null;
 
+  const navItems =
+    user.role === 'admin' ? [...NAV_ITEMS, { to: '/admin', label: 'ניהול' }] : NAV_ITEMS;
+
   return (
     <nav
       className="glass-panel relative box-border h-16 min-h-16 max-h-16 w-full shrink-0 overflow-visible !p-0"
@@ -75,7 +78,7 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden md:flex min-w-0 items-center gap-1 overflow-x-auto">
-            {NAV_ITEMS.map(({ to, label }) => (
+            {navItems.map(({ to, label }) => (
               <NavLink key={to} to={to} className={navLinkClass}>
                 {label}
               </NavLink>
@@ -128,7 +131,7 @@ export default function Navbar() {
         >
           <div className="glass-panel !p-2 shadow-lg">
             <p className="px-4 py-2 text-xs font-medium text-gray-400 lg:hidden">שלום, {user.name}</p>
-            {NAV_ITEMS.map(({ to, label }) => (
+            {navItems.map(({ to, label }) => (
               <NavLink key={to} to={to} className={mobileNavLinkClass} onClick={() => setMenuOpen(false)}>
                 {label}
               </NavLink>

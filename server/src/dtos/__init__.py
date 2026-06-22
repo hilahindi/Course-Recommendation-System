@@ -1,5 +1,8 @@
 from dtos.schemas import (
+    AdminUserResponse,
     AverageFeatureVectorResponse,
+    CourseAdminCreate,
+    CourseAdminUpsert,
     CourseBase,
     CoursePipelineSeedResult,
     CoursePipelineStepResult,
@@ -21,10 +24,14 @@ from dtos.schemas import (
     StudentProfileResponse,
     StudentProfileUpdate,
     TrackBase,
+    UserRoleUpdate,
 )
 
 __all__ = [
+    "AdminUserResponse",
     "AverageFeatureVectorResponse",
+    "CourseAdminCreate",
+    "CourseAdminUpsert",
     "CourseBase",
     "CoursePipelineSeedResult",
     "CoursePipelineStepResult",
@@ -46,4 +53,5 @@ __all__ = [
     "StudentProfileResponse",
     "StudentProfileUpdate",
     "TrackBase",
+    "UserRoleUpdate",
 ]

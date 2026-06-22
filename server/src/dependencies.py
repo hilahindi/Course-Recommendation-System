@@ -62,6 +62,17 @@ def verify_student_access(
     return student_id
 
 
+def require_admin(
+    student_id: int = Depends(get_current_student_id),
+    db: Session = Depends(get_db),
+) -> int:
+    """Allow only authenticated users whose role is 'admin'."""
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student or student.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return student_id
+
+
 def get_course_repository(db: Session = Depends(get_db)) -> CourseRepository:
     from catalog_sync import catalog_sync_status
 

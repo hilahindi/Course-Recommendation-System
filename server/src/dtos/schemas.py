@@ -141,6 +141,44 @@ class AverageFeatureVectorResponse(BaseModel):
     source: str = "industry_jobs.feature_vector"
 
 
+class CourseAdminUpsert(BaseModel):
+    name: str
+    category: Optional[str] = None
+    workload: int = 3
+    credits: float = 3.0
+    semester_hours: int = 3
+    has_exam: bool = True
+    mandatory_attendance: bool = False
+    prerequisites: str = ""
+    skills: Optional[str] = None
+    lecturer: Optional[str] = None
+
+
+class CourseAdminCreate(CourseAdminUpsert):
+    course_code: int
+
+
+class UserRoleUpdate(BaseModel):
+    role: str
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        if value not in ("student", "admin"):
+            raise ValueError("role must be 'student' or 'admin'")
+        return value
+
+
+class AdminUserResponse(BaseModel):
+    id: int
+    name: Optional[str] = None
+    email: str
+    role: str
+
+    class Config:
+        from_attributes = True
+
+
 class CourseReviewCreate(BaseModel):
     course_code: int
     rating: int

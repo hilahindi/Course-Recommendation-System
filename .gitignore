@@ -13,6 +13,10 @@ client/dist/
 # Ignore local environment variables and database files
 .env
 server/*.db
+server/tests/*.db
+
+# Test / cache artifacts
+.pytest_cache/
 
 # Course source files (local only — not committed)
 data/

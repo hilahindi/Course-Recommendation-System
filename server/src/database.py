@@ -19,6 +19,10 @@ if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
         "keepalives_interval": int(os.getenv("DB_KEEPALIVES_INTERVAL", "10")),
         "keepalives_count": int(os.getenv("DB_KEEPALIVES_COUNT", "5")),
     }
+elif SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    # Used by the automated test suite; allows the TestClient threadpool to
+    # share SQLite connections. Not used in production (Postgres).
+    _connect_args = {"check_same_thread": False}
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
@@ -131,6 +135,25 @@ def ensure_courses_table_sync() -> None:
     with engine.begin() as conn:
         for column_name in sorted(missing):
             conn.execute(text(_COURSES_COLUMN_ALTER[column_name]))
+
+
+def ensure_students_table_sync() -> None:
+    """Add the role column to an existing students table (additive, safe)."""
+    inspector = inspect(engine)
+    if "students" not in inspector.get_table_names():
+        return
+
+    column_names = {column["name"] for column in inspector.get_columns("students")}
+    if "role" in column_names:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE students ADD COLUMN IF NOT EXISTS "
+                "role VARCHAR NOT NULL DEFAULT 'student'"
+            )
+        )
 
 
 def drop_jobrole_skill_link_table() -> None:

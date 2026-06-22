@@ -57,7 +57,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
       .catch((err) => console.error('Failed to refresh yearly courses:', err));
   }, [step, courses.length]);
 
-  // בדיקת תקינות לפי שלבים
+  // Step-by-step validation
   const isStepValid = () => {
     if (step === 1) return degree !== '';
     if (step === 2) return yearOfStudy >= 1;

@@ -103,6 +103,9 @@ class Student(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     name = Column(String)
+    # Role-based access control: "student" (default) or "admin". Extensible to
+    # additional roles (e.g. "advisor") without a schema change.
+    role = Column(String, nullable=False, default="student", server_default="student")
 
     profile = relationship("StudentProfile", back_populates="student", uselist=False)
 

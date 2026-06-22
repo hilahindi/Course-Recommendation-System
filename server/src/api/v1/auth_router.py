@@ -64,4 +64,5 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user_id": db_user.id,
         "name": db_user.name,
+        "role": db_user.role,
     }

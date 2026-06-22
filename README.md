@@ -2,6 +2,8 @@
 
 This project is a full-stack web application designed to recommend academic courses to students based on their previous academic history, personal workload preferences, and industry demands.
 
+> **Architecture & design:** see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the system design, recommendation algorithm, authentication/RBAC, data model, and testing.
+
 ## Prerequisites
 - **Docker & Docker Compose** (to run the PostgreSQL database)
 - **Python 3.8+** (for the FastAPI backend)

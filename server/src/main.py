@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import models
 from api.v1 import (
+    admin_router,
     auth_router,
     courses_router,
     jobs_router,
@@ -22,6 +23,7 @@ from database import (
     drop_jobroles_skill_vector,
     ensure_courses_table_sync,
     ensure_industry_jobs_table_sync,
+    ensure_students_table_sync,
 )
 from repositories.course_repository import CourseRepository
 from services.market_role_service_impl import MarketRoleServiceImpl
@@ -29,6 +31,7 @@ from services.market_role_service_impl import MarketRoleServiceImpl
 models.Base.metadata.create_all(bind=engine)
 ensure_courses_table_sync()
 ensure_industry_jobs_table_sync()
+ensure_students_table_sync()
 drop_jobroles_skill_vector()
 drop_jobrole_skill_link_table()
 
@@ -79,6 +82,7 @@ app.include_router(profile_router.router)
 app.include_router(recommendations_router.router)
 app.include_router(metadata_router.router)
 app.include_router(jobs_router.router)
+app.include_router(admin_router.router)
 
 
 @app.get("/api/v1/test")

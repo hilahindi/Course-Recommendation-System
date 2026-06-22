@@ -68,7 +68,7 @@ def build_yearly_mandatory_map() -> dict[int, list[int]]:
 
 
 MANDATORY_CURRICULUM: tuple[MandatoryCourseSpec, ...] = (
-    # ── שנה א' — סמסטר א' ────────────────────────────────────────────────
+    # ── Year 1 — Semester A ──────────────────────────────────────────────
     MandatoryCourseSpec(
         90901,
         "חשבון דיפרנציאלי ואינטגרלי 1",
@@ -103,7 +103,7 @@ MANDATORY_CURRICULUM: tuple[MandatoryCourseSpec, ...] = (
         semester=1,
         workload=6,
     ),
-    # ── שנה א' — סמסטר ב' ────────────────────────────────────────────────
+    # ── Year 1 — Semester B ──────────────────────────────────────────────
     MandatoryCourseSpec(
         90902,
         "חשבון דיפרנציאלי ואינטגרלי 2",
@@ -142,7 +142,7 @@ MANDATORY_CURRICULUM: tuple[MandatoryCourseSpec, ...] = (
         semester=2,
         workload=6,
     ),
-    # ── שנה ב' — סמסטר א' ────────────────────────────────────────────────
+    # ── Year 2 — Semester A ──────────────────────────────────────────────
     MandatoryCourseSpec(
         90923,
         "לוגיקה מתמטית למדעי המחשב",
@@ -189,7 +189,7 @@ MANDATORY_CURRICULUM: tuple[MandatoryCourseSpec, ...] = (
         semester=3,
         workload=3,
     ),
-    # ── שנה ב' — סמסטר ב' ────────────────────────────────────────────────
+    # ── Year 2 — Semester B ──────────────────────────────────────────────
     MandatoryCourseSpec(
         10013,
         "תקשורת מחשבים",
@@ -228,7 +228,7 @@ MANDATORY_CURRICULUM: tuple[MandatoryCourseSpec, ...] = (
         semester=4,
         workload=4,
     ),
-    # ── שנה ג' — סמסטר א' ────────────────────────────────────────────────
+    # ── Year 3 — Semester A ──────────────────────────────────────────────
     MandatoryCourseSpec(
         10324,
         "מחשוב מקבילי ומבוזר",
@@ -266,7 +266,7 @@ MANDATORY_CURRICULUM: tuple[MandatoryCourseSpec, ...] = (
         semester=5,
         workload=5,
     ),
-    # ── שנה ג' — סמסטר ב' ────────────────────────────────────────────────
+    # ── Year 3 — Semester B ──────────────────────────────────────────────
     MandatoryCourseSpec(
         10121,
         "אלגוריתם מתקדם",

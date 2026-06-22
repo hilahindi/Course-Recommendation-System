@@ -48,7 +48,7 @@ async function cachedGet<T>(
   key: string,
   fetcher: () => Promise<{ data: T }>,
   options?: { force?: boolean },
-) {
+): Promise<{ data: any }> {
   const data = await cachedRequest<T>(
     key,
     async () => {
@@ -152,6 +152,26 @@ export const api = {
       () => apiClient.get('/recommendations/roadmap'),
       options,
     ),
+
+  // Admin — curriculum & user management (admin role required)
+  adminListUsers: async () => apiClient.get('/admin/users'),
+  adminSetUserRole: async (userId: number, role: string) =>
+    apiClient.patch(`/admin/users/${userId}/role`, { role }),
+  adminCreateCourse: async (data: unknown) => {
+    const res = await apiClient.post('/admin/courses', data);
+    invalidateCache('courses');
+    return res;
+  },
+  adminUpdateCourse: async (courseCode: number, data: unknown) => {
+    const res = await apiClient.put(`/admin/courses/${courseCode}`, data);
+    invalidateCache('courses');
+    return res;
+  },
+  adminDeleteCourse: async (courseCode: number) => {
+    const res = await apiClient.delete(`/admin/courses/${courseCode}`);
+    invalidateCache('courses');
+    return res;
+  },
 
   // Schedule
   getSchedule: (studentId: number, options?: { force?: boolean }) =>

@@ -35,7 +35,6 @@ export default function ReviewModal({ course, onClose }: { course: any; onClose:
     setSubmitting(true);
     try {
       const res = await api.createCourseReview(course.course_code, user.user_id, {
-        course_code: course.course_code,
         rating: newRating,
         review_text: newText,
         is_anonymous: isAnonymous,

@@ -235,7 +235,7 @@ export default function CourseHistory() {
   if (error) return (
     <div className="text-center py-20 text-gray-500">
       <p className="mb-4">{error}</p>
-      <button onClick={refreshAll} className="text-emerald-600 underline">נסה שוב</button>
+      <button onClick={() => refreshAll()} className="text-emerald-600 underline">נסה שוב</button>
     </div>
   );
 
@@ -402,8 +402,8 @@ export default function CourseHistory() {
                     const unsaved = entryIsUnsaved(entry, savedHistory);
                     const isNew = entry.id == null;
                     const hasGrade = entry.grade !== '';
-                    const passed = !unsaved && hasGrade && entry.grade >= 60;
-                    const failed = !unsaved && hasGrade && entry.grade < 60;
+                    const passed = !unsaved && hasGrade && Number(entry.grade) >= 60;
+                    const failed = !unsaved && hasGrade && Number(entry.grade) < 60;
                     return (
                       <div
                         key={entry.course_code}

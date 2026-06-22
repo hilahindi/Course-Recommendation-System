@@ -105,6 +105,70 @@ class CourseRepository:
             .first()
         )
 
+    # --- Admin: course management ---
+
+    def create_course(self, data: dict) -> models.Course:
+        course = models.Course(**data)
+        self._db.add(course)
+        self._db.commit()
+        self._db.refresh(course)
+        return course
+
+    def update_course(self, course_code: int, data: dict) -> Optional[models.Course]:
+        course = self.get_course_by_code(course_code)
+        if course is None:
+            return None
+        for field, value in data.items():
+            setattr(course, field, value)
+        self._db.commit()
+        self._db.refresh(course)
+        return course
+
+    def delete_course(self, course_code: int) -> bool:
+        course = self.get_course_by_code(course_code)
+        if course is None:
+            return False
+        # Clear associations and dependent rows to satisfy FK constraints.
+        course.tracks = []
+        course.prerequisite_courses = []
+        course.linked_skills = []
+        self._db.flush()
+        self._db.query(models.CourseReview).filter(
+            models.CourseReview.course_code == course_code
+        ).delete(synchronize_session=False)
+        self._db.query(models.PlannedCourse).filter(
+            models.PlannedCourse.course_code == course_code
+        ).delete(synchronize_session=False)
+        self._db.query(models.StudentCourseHistory).filter(
+            models.StudentCourseHistory.course_code == course_code
+        ).delete(synchronize_session=False)
+        self._db.execute(
+            models.course_prerequisite_link.delete().where(
+                models.course_prerequisite_link.c.prerequisite_code == course_code
+            )
+        )
+        self._db.delete(course)
+        self._db.commit()
+        return True
+
+    # --- Admin: user / role management ---
+
+    def list_students(self) -> List[models.Student]:
+        return self._db.query(models.Student).order_by(models.Student.id).all()
+
+    def set_student_role(self, user_id: int, role: str) -> Optional[models.Student]:
+        student = (
+            self._db.query(models.Student)
+            .filter(models.Student.id == user_id)
+            .first()
+        )
+        if student is None:
+            return None
+        student.role = role
+        self._db.commit()
+        self._db.refresh(student)
+        return student
+
     def get_courses_for_pipeline(self) -> List[models.Course]:
         return self._db.query(models.Course).all()
 
@@ -626,7 +690,13 @@ class CourseRepository:
             self._db.commit()
 
     def ensure_catalog_synced(self) -> None:
-        """Run heavy catalog sync once per server process (not on every API call)."""
+        """Seed the curriculum once; afterwards the DB is the source of truth.
+
+        The Python curriculum catalogs are the initial seed only. The heavy
+        upsert runs when the courses table is empty (first boot) or when
+        CATALOG_FORCE_RESEED is set. Once the DB is populated, startup leaves it
+        untouched so admin-managed edits are preserved across restarts.
+        """
         global _catalog_synced
         if _catalog_synced:
             return
@@ -640,6 +710,18 @@ class CourseRepository:
         with _catalog_sync_lock:
             if _catalog_synced:
                 return
+
+            force_reseed = os.getenv("CATALOG_FORCE_RESEED", "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+            )
+            already_populated = self._db.query(models.Course).count() > 0
+            if already_populated and not force_reseed:
+                # DB already holds the curriculum; do not overwrite admin edits.
+                _catalog_synced = True
+                return
+
             self.ensure_track_course_links()
             _catalog_synced = True
 

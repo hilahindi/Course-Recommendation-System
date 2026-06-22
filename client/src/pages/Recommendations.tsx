@@ -77,14 +77,6 @@ export default function Recommendations() {
 
   const activeRecommendations = recommendations.filter(r => !dismissed.has(r.course.course_code));
 
-  const handleDismiss = (courseCode: number) => {
-    setDismissed(prev => {
-      const newSet = new Set(prev);
-      newSet.add(courseCode);
-      return newSet;
-    });
-  };
-
   const handleAdd = async (courseCode: number, courseName: string) => {
     if (!user) return;
     try {

@@ -46,24 +46,24 @@ def parse_syllabus(pdf_path):
 
     result = {"syllabus_course_code": syllabus_code}
 
-    # credits — סה"כ נ"ז
+    # credits — total credit points
     m = re.search(r'סה"כ נ"ז\s*([\d.]+)', text)
     if m:
         result["credits"] = float(m.group(1))
         result["workload"] = int(float(m.group(1)))
 
-    # semester_hours — היקף הקורס (total weekly contact hours)
+    # semester_hours — course scope (total weekly contact hours)
     m = re.search(r'היקף הקורס\s*([\d.]+)', text)
     if m:
         result["semester_hours"] = int(float(m.group(1)))
 
-    # mandatory_attendance — נוכחות
+    # mandatory_attendance — attendance requirement
     if "ללא חובת נוכחות" in text:
         result["mandatory_attendance"] = False
     elif "חובת נוכחות" in text:
         result["mandatory_attendance"] = True
 
-    # prerequisites — תנאי קדם (everything up to the advisory notice)
+    # prerequisites (everything up to the advisory notice)
     m = re.search(
         r"תנאי קדם\s+(.*?)(?=לתשומת ליבך|נוכחות\s|מטרות\s|תקציר\s)",
         text,
@@ -74,7 +74,7 @@ def parse_syllabus(pdf_path):
         if prereq:
             result["prerequisites"] = prereq
 
-    # final_task_description — תקציר (course abstract / summary)
+    # final_task_description — course abstract / summary
     m = re.search(
         r"תקציר\s+(.*?)(?=תוצרי למידה|נושאי הקורס|דגשים ונלווים|רכז הקורס|$)",
         text,
@@ -85,7 +85,7 @@ def parse_syllabus(pdf_path):
         if summary:
             result["final_task_description"] = summary[:1000]
 
-    # Fallback: use מטרות when no תקציר found
+    # Fallback: use the goals section when no abstract is found
     if "final_task_description" not in result:
         m = re.search(
             r"מטרות\s+(.*?)(?=תקציר|תוצרי למידה|$)",
@@ -97,7 +97,7 @@ def parse_syllabus(pdf_path):
             if goals:
                 result["final_task_description"] = goals[:1000]
 
-    # has_exam — מבחן סופי with weight > 0
+    # has_exam — final exam with weight > 0
     m = re.search(r"מבחן סופי\s+(\d+)", text)
     if m:
         result["has_exam"] = int(m.group(1)) > 0

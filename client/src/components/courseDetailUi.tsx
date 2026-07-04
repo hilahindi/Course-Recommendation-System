@@ -1,3 +1,5 @@
+// Overrides the global `button` styling in index.css (shadow, lift-on-hover, padding)
+// for icon-only buttons like the close X and star rating picker.
 const iconButtonClass =
   '!p-0 !m-0 !min-w-0 !shadow-none !transform-none hover:!transform-none border-0 focus:outline-none focus-visible:outline-none';
 

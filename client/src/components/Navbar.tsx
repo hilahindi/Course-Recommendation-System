@@ -41,6 +41,8 @@ export default function Navbar() {
     setMenuOpen(false);
   }, [location.pathname]);
 
+  // Auto-close the mobile menu when the viewport crosses into the desktop
+  // breakpoint (e.g. rotating a tablet), where the mobile menu isn't rendered anyway.
   useEffect(() => {
     const onResize = () => {
       if (window.matchMedia('(min-width: 768px)').matches) {

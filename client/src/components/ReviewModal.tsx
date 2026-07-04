@@ -39,6 +39,7 @@ export default function ReviewModal({ course, onClose }: { course: any; onClose:
         review_text: newText,
         is_anonymous: isAnonymous,
       });
+      // A student has at most one review per course, so replace any existing entry instead of appending.
       setReviews(prev => [res.data, ...prev.filter(r => r.student_id !== user.user_id)]);
       setNewText('');
     } catch (err) {

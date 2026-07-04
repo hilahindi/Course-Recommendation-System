@@ -26,6 +26,7 @@ export default function Auth() {
         login(res.data);
       }
     } catch (err: any) {
+      // FastAPI error responses shape the message as { detail: string }.
       setError(err.response?.data?.detail || "An error occurred");
     } finally {
       setLoading(false);

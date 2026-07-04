@@ -34,6 +34,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   elective: 'בחירה',
   elective1: 'בחירה',
   seminar: 'סמינר',
+  general: 'כלליים',
 };
 
 const MANDATORY_YEAR_LABELS: Record<number, string> = {
@@ -256,7 +257,7 @@ export default function CourseHistory() {
         <div className="mt-5 mb-3">
           <div className="flex justify-between text-sm text-gray-500 mb-1">
             <span>{completion}% הושלם</span>
-            <span>{summary.passed_mandatory ?? 0}/{summary.total_mandatory ?? 0} חובה</span>
+            <span>{summary.credits_earned ?? 0}/{summary.credits_required ?? 120} נ"ז</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
@@ -273,12 +274,22 @@ export default function CourseHistory() {
             <div className="text-gray-500">קורסי חובה</div>
           </div>
           <div className="text-center">
-            <div className="font-bold text-teal-600 text-lg">{summary.passed_electives ?? 0}/{summary.electives_needed ?? 0}</div>
+            <div className="font-bold text-teal-600 text-lg">
+              {summary.passed_electives ?? 0}/{(summary.passed_electives ?? 0) + (summary.electives_needed ?? 0)}
+            </div>
             <div className="text-gray-500">בחירה חופשית</div>
           </div>
           <div className="text-center">
-            <div className="font-bold text-blue-600 text-lg">{summary.passed_seminars ?? 0}/{summary.seminars_needed ?? 0}</div>
+            <div className="font-bold text-blue-600 text-lg">
+              {summary.passed_seminars ?? 0}/{(summary.passed_seminars ?? 0) + (summary.seminars_needed ?? 0)}
+            </div>
             <div className="text-gray-500">סמינר</div>
+          </div>
+          <div className="text-center">
+            <div className="font-bold text-purple-600 text-lg">
+              {summary.passed_generals ?? 0}/{(summary.passed_generals ?? 0) + (summary.generals_needed ?? 0)}
+            </div>
+            <div className="text-gray-500">כלליים</div>
           </div>
         </div>
 
@@ -550,11 +561,17 @@ export default function CourseHistory() {
 
       {reviewingCourse && (
         <ReviewModal
-          course={{
-            name: reviewingCourse.name,
-            course_code: reviewingCourse.code ?? reviewingCourse.course_code,
-          }}
-          onClose={() => { setReviewingCourse(null); refreshAll(); }}
+          // The roadmap entry only has {code, name, credits, category, status} —
+          // look up the full catalog course so the modal can show workload/prerequisites/skills.
+          course={
+            courses.find(
+              c => c.course_code === (reviewingCourse.code ?? reviewingCourse.course_code)
+            ) ?? {
+              name: reviewingCourse.name,
+              course_code: reviewingCourse.code ?? reviewingCourse.course_code,
+            }
+          }
+          onClose={() => setReviewingCourse(null)}
         />
       )}
     </div>

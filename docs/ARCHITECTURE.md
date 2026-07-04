@@ -60,7 +60,7 @@ The backend follows a **layered, dependency-injected design**:
 - **`courses`** — catalog (code, name, category, credits, workload, skills,
   prerequisites, `feature_vector`, `avg_rating`).
 - **`tracks`** — specialization tracks; many-to-many with courses.
-- **`skills`**, **`job_roles`** — reference entities.
+- **`skills`**, **`jobroles`** — reference entities.
 - **`industry_jobs`** — live Adzuna listings with `extracted_skills`,
   `feature_vector`, and **`search_role`** (scopes market data per target role).
 - **`course_reviews`**, **`planned_courses`** — per-student user content.
@@ -216,6 +216,14 @@ Run: `cd server && .venv/Scripts/python -m pytest tests/ -v`
   (port 5173). See the root `README.md`.
 - **Configuration** — `server/.env` (`DATABASE_URL`, `JWT_SECRET_KEY`,
   `ANTHROPIC_API_KEY`, Adzuna keys). See `server/.env.example`.
-- **Production build** — the client Dockerfile runs `npm run build`
-  (`tsc -b && vite build`) and serves the static bundle through Nginx; the
-  backend image runs Uvicorn against the managed PostgreSQL instance.
+- **Cloud / production** — `docker-compose.yaml` (distinct from the local
+  `docker-compose.yml`) builds and runs the full stack as containers:
+  PostgreSQL, backend, the built frontend behind Nginx, and pgAdmin
+  (`docker compose -f docker-compose.yaml up -d --build`). The client
+  Dockerfile runs `npm run build` (`tsc -b && vite build`) and serves the
+  static bundle through Nginx; the backend image runs Uvicorn against the
+  containerized PostgreSQL instance. All secrets (DB password, pgAdmin
+  login, JWT secret, API keys) must be overridden via environment
+  variables — the checked-in file only ships placeholder defaults for
+  local experimentation. See the root `README.md` for the full variable
+  list.

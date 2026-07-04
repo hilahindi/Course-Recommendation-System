@@ -71,14 +71,19 @@ export default function Dashboard() {
 
   const summary = roadmapSummary ?? {};
   const progressPercent = Math.min(summary.completion_pct ?? 0, 100);
-  const totalCourses =
-    (summary.total_mandatory ?? 0) +
-    (summary.electives_needed ?? 0) +
-    (summary.seminars_needed ?? 0);
   const passedCourses =
     (summary.passed_mandatory ?? 0) +
     (summary.passed_electives ?? 0) +
-    (summary.passed_seminars ?? 0);
+    (summary.passed_seminars ?? 0) +
+    (summary.passed_generals ?? 0);
+  // electives/seminars/generals_needed are "still remaining", not fixed totals
+  // (electives have no fixed course count — see docs/ARCHITECTURE.md), so the
+  // degree's total course count is passed-so-far + whatever's still needed.
+  const totalCourses =
+    (summary.total_mandatory ?? 0) +
+    (summary.passed_electives ?? 0) + (summary.electives_needed ?? 0) +
+    (summary.passed_seminars ?? 0) + (summary.seminars_needed ?? 0) +
+    (summary.passed_generals ?? 0) + (summary.generals_needed ?? 0);
 
   return (
     <div className="w-full min-w-0 space-y-6 sm:space-y-8 animate-fade-in">

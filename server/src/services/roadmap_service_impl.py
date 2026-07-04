@@ -13,6 +13,7 @@ Algorithm:
 
 from __future__ import annotations
 
+import math
 from collections import deque
 from typing import Optional
 
@@ -45,8 +46,26 @@ from sqlalchemy.orm import Session
 # ------------------------------------------------------------------ constants
 
 _PASSING_GRADE = 60
-_ELECTIVES_REQUIRED = 6
 _SEMINAR_REQUIRED = 1
+_GENERAL_REQUIRED = 2  # "חברה ורוח" general-education courses required, fixed count (not credit-driven)
+_GENERAL_COURSE_CREDITS = 3.0  # actual credit value of every course in the 'general' catalog category
+_SEMINAR_CREDITS = 2.5
+_PROGRAM_CREDITS_REQUIRED = 120  # University minimum to graduate — electives exist only to fill the gap to this
+_NON_SEMINAR_ELECTIVES = [s.credits for s in ELECTIVE_CURRICULUM if s.category != "seminar"]
+_AVG_ELECTIVE_CREDITS = (
+    sum(_NON_SEMINAR_ELECTIVES) / len(_NON_SEMINAR_ELECTIVES) if _NON_SEMINAR_ELECTIVES else 3.0
+)
+_MANDATORY_TOTAL_CREDITS = sum(s.credits for s in MANDATORY_CURRICULUM)
+# Fixed program-wide pool of non-seminar elective credits needed to reach 120 —
+# independent of how much of *mandatory* the student has completed so far.
+# The seminar's own 2.5 credits are reserved separately (tracked via seminars_needed).
+_NON_SEMINAR_ELECTIVE_CREDIT_TARGET = max(
+    _PROGRAM_CREDITS_REQUIRED
+    - _MANDATORY_TOTAL_CREDITS
+    - _GENERAL_REQUIRED * _GENERAL_COURSE_CREDITS
+    - _SEMINAR_REQUIRED * _SEMINAR_CREDITS,
+    0,
+)
 _DEGREE_SEMESTERS = 6  # 3-year BSc — semesters 7–8 are never shown
 # Cap applies only to system-generated recommended courses in the roadmap.
 # Students may plan or take more than this per semester on their own.
@@ -282,6 +301,23 @@ class RoadmapServiceImpl:
                 }
             semesters.setdefault(sem, []).append(entry)
 
+        # ── Passed general ('כלליים') courses (history) ─────────────────────
+        for code in self._passed_general_codes(passed_codes, db_session):
+            course = (
+                db_session.query(models.Course)
+                .filter(models.Course.course_code == code)
+                .first()
+            )
+            semesters.setdefault(sem_map.get(code, 4), []).append(
+                {
+                    "code": code,
+                    "name": course.name if course else str(code),
+                    "credits": float(course.credits) if course and course.credits else _GENERAL_COURSE_CREDITS,
+                    "category": "general",
+                    "status": "passed",
+                }
+            )
+
         # ── Personalized recommended electives / seminars ──────────────────
         await self._fill_recommended_electives(
             semesters,
@@ -310,7 +346,7 @@ class RoadmapServiceImpl:
         )
 
         summary = self._build_summary(
-            passed_codes, passed_elective_codes, db_session, track_names
+            student_id, passed_codes, passed_elective_codes, db_session, track_names
         )
 
         return {
@@ -442,21 +478,28 @@ class RoadmapServiceImpl:
         db_session: Session,
     ) -> None:
         """Plan the same recommended courses as the recommendations list, prerequisites first."""
-        mandatory_codes = {s.code for s in MANDATORY_CURRICULUM}
+        mandatory_codes = (
+            {s.code for s in MANDATORY_CURRICULUM} | self._mandatory_db_aliases(db_session)
+        )
         exclude = self._expand_code_variants(
             passed_codes | passed_elective_codes | mandatory_codes
         )
 
-        passed_seminars = self._passed_seminar_count(passed_codes, db_session)
-        passed_non_seminar = len(passed_elective_codes) - passed_seminars
-        electives_needed = max(_ELECTIVES_REQUIRED - passed_non_seminar, 0)
-        seminars_needed = max(_SEMINAR_REQUIRED - passed_seminars, 0)
-
-        if electives_needed == 0 and seminars_needed == 0:
-            return
+        progress = self._credit_progress(
+            student_id, passed_codes, passed_elective_codes, db_session
+        )
+        electives_needed = progress["electives_needed"]
+        seminars_needed = progress["seminars_needed"]
+        generals_needed = progress["generals_needed"]
 
         profile = self._repository.get_student_profile(student_id)
         track_names = track_names_from_profile(profile)
+
+        if electives_needed == 0 and seminars_needed == 0:
+            self._fill_general_courses(
+                semesters, exclude, sem_map, generals_needed, passed_codes, db_session
+            )
+            return
 
         recommendations = await self._fetch_recommendations(student_id, db_session)
         plan = self._build_plan_from_recommendations(
@@ -476,6 +519,9 @@ class RoadmapServiceImpl:
                 seminars_needed,
                 track_names,
                 passed_codes,
+            )
+            self._fill_general_courses(
+                semesters, exclude, sem_map, generals_needed, passed_codes, db_session
             )
             return
 
@@ -556,6 +602,67 @@ class RoadmapServiceImpl:
                 passed_codes,
                 placed_semesters,
             )
+
+        self._fill_general_courses(
+            semesters, exclude, sem_map, generals_needed, passed_codes, db_session
+        )
+
+    def _fill_general_courses(
+        self,
+        semesters: dict[int, list[dict]],
+        exclude: set[int],
+        sem_map: dict[int, int],
+        generals_needed: int,
+        passed_codes: set[int],
+        db_session: Session,
+    ) -> None:
+        """Place required 'כלליים' (general-education) courses.
+
+        Unlike electives/seminars these have no prerequisites or DAG position —
+        just spread them across the upper-year semesters, respecting the same
+        per-semester cap as everything else.
+        """
+        if generals_needed <= 0:
+            return
+
+        already_planned = {
+            int(c.get("code", 0)) for courses in semesters.values() for c in courses
+        }
+        taken = exclude | self._expand_code_variants(already_planned | passed_codes)
+        candidates = (
+            db_session.query(models.Course)
+            .filter(models.Course.category == "general")
+            .order_by(models.Course.course_code)
+            .all()
+        )
+
+        placed = 0
+        placed_semesters = self._index_planned_semesters(semesters)
+        for course in candidates:
+            if placed >= generals_needed:
+                break
+            if self._code_is_in_set(course.course_code, taken):
+                continue
+            floor = self._elective_floor_semester(
+                course.course_code, sem_map, placed_semesters, passed_codes, semesters
+            )
+            pref = max(
+                floor, self._spread_preferred_semester(placed, generals_needed, floor)
+            )
+            sem = self._allocate_semester(semesters, pref, course.course_code, sem_map)
+            if self._semester_load(semesters, sem) >= _MAX_COURSES_PER_SEMESTER:
+                continue
+            semesters.setdefault(sem, []).append(
+                {
+                    "code": course.course_code,
+                    "name": course.name,
+                    "credits": float(course.credits or _GENERAL_COURSE_CREDITS),
+                    "category": "general",
+                    "status": "recommended",
+                }
+            )
+            placed_semesters[course.course_code] = sem
+            placed += 1
 
     @staticmethod
     def _semester_load(semesters: dict[int, list[dict]], sem: int) -> int:
@@ -1247,6 +1354,28 @@ class RoadmapServiceImpl:
                 return catalog_code
         return code
 
+    def _mandatory_db_aliases(self, db_session: Session) -> set[int]:
+        """DB course codes that are really a mandatory-catalog course by name,
+        even when the department has since renumbered it to a different code.
+
+        The mandatory catalog is a hardcoded initial seed (see docs/ARCHITECTURE.md)
+        and drifts from the live DB's course codes over time. Without this, a
+        renumbered mandatory course isn't recognized as "already required" and
+        gets recommended a second time as if it were a free elective — the same
+        course showing up twice under two different codes.
+        """
+        aliases: set[int] = set()
+        db_courses = db_session.query(models.Course.course_code, models.Course.name).all()
+        for spec in MANDATORY_CURRICULUM:
+            candidates = (spec.name, *spec.aliases)
+            for code, name in db_courses:
+                if not name:
+                    continue
+                name = name.strip()
+                if any(name == n or name in n or n in name for n in candidates):
+                    aliases.add(code)
+        return aliases
+
     def _semester_for_code(
         self, code: int, sem_map: dict[int, int], default: int
     ) -> int:
@@ -1359,8 +1488,121 @@ class RoadmapServiceImpl:
         }
         return len(passed_codes & (seminar_codes | db_seminar_codes))
 
+    def _passed_general_codes(
+        self, passed_codes: set[int], db_session: Session
+    ) -> set[int]:
+        db_general_codes = {
+            c.course_code
+            for c in db_session.query(models.Course)
+            .filter(models.Course.category == "general")
+            .all()
+        }
+        return passed_codes & db_general_codes
+
+    def _credits_earned(self, student_id: int, db_session: Session) -> float:
+        """Sum credits of passed courses straight from history, not `passed_codes`.
+
+        `passed_codes` intentionally expands each course into several legacy/alias
+        code variants for prerequisite matching — summing over it would double-count
+        the same course. Each history row is one real, distinct course, and its live
+        `credits` value (not a snapshot) is what counts: a course's credit weight is
+        whatever it's worth when the student actually completes it, even if the
+        catalog value changes later.
+        """
+        history = self._repository.get_student_history(student_id)
+        total = 0.0
+        for h in history:
+            if h.grade < _PASSING_GRADE:
+                continue
+            course = h.course
+            if course is None:
+                course = (
+                    db_session.query(models.Course)
+                    .filter(models.Course.course_code == h.course_code)
+                    .first()
+                )
+            if course and course.credits:
+                total += float(course.credits)
+        return total
+
+    def _non_seminar_elective_credits_earned(
+        self,
+        passed_elective_codes: set[int],
+        passed_seminars_count: int,
+        db_session: Session,
+    ) -> float:
+        """Sum credits of passed electives, excluding the seminar itself.
+
+        The seminar is one specific required pick *within* the elective pool
+        (see `_NON_SEMINAR_ELECTIVE_CREDIT_TARGET`), not an extra course on top
+        of it, so its credits are tracked separately and excluded here.
+        """
+        seminar_codes = {s.code for s in ELECTIVE_CURRICULUM if s.category == "seminar"}
+        db_seminar_codes = {
+            c.course_code
+            for c in db_session.query(models.Course)
+            .filter(models.Course.category == "seminar")
+            .all()
+        }
+        non_seminar_codes = passed_elective_codes - seminar_codes - db_seminar_codes
+        total = 0.0
+        for code in non_seminar_codes:
+            course = (
+                db_session.query(models.Course)
+                .filter(models.Course.course_code == code)
+                .first()
+            )
+            if course and course.credits:
+                total += float(course.credits)
+        return total
+
+    def _credit_progress(
+        self,
+        student_id: int,
+        passed_codes: set[int],
+        passed_elective_codes: set[int],
+        db_session: Session,
+    ) -> dict:
+        """נ"ז progress toward the 120-credit graduation minimum.
+
+        Electives have no fixed course count — per the department's own rule,
+        they're the completion of mandatory + general-education courses up to
+        120 total. So the non-seminar elective credit pool
+        (`_NON_SEMINAR_ELECTIVE_CREDIT_TARGET`) is a FIXED program-wide target,
+        not "whatever's left after today's progress" — it must not shrink just
+        because the student hasn't finished mandatory courses yet.
+        """
+        credits_earned = self._credits_earned(student_id, db_session)
+        passed_seminars = self._passed_seminar_count(passed_codes, db_session)
+        passed_generals = len(self._passed_general_codes(passed_codes, db_session))
+        seminars_needed = max(_SEMINAR_REQUIRED - passed_seminars, 0)
+        generals_needed = max(_GENERAL_REQUIRED - passed_generals, 0)
+
+        elective_credits_earned = self._non_seminar_elective_credits_earned(
+            passed_elective_codes, passed_seminars, db_session
+        )
+        electives_credits_remaining = max(
+            _NON_SEMINAR_ELECTIVE_CREDIT_TARGET - elective_credits_earned, 0
+        )
+        electives_needed = (
+            math.ceil(electives_credits_remaining / _AVG_ELECTIVE_CREDITS)
+            if electives_credits_remaining > 0
+            else 0
+        )
+
+        return {
+            "credits_earned": credits_earned,
+            "credits_required": _PROGRAM_CREDITS_REQUIRED,
+            "passed_seminars": passed_seminars,
+            "seminars_needed": seminars_needed,
+            "passed_generals": passed_generals,
+            "generals_needed": generals_needed,
+            "electives_needed": electives_needed,
+        }
+
     def _build_summary(
         self,
+        student_id: int,
         passed_codes: set[int],
         passed_elective_codes: set[int],
         db_session: Session,
@@ -1372,22 +1614,27 @@ class RoadmapServiceImpl:
             for spec in MANDATORY_CURRICULUM
             if self._code_is_in_set(spec.code, passed_codes)
         )
-        passed_seminars = self._passed_seminar_count(passed_codes, db_session)
+        progress = self._credit_progress(
+            student_id, passed_codes, passed_elective_codes, db_session
+        )
+        passed_seminars = progress["passed_seminars"]
         passed_electives = len(passed_elective_codes) - passed_seminars
 
-        total_needed = (
-            len(MANDATORY_CURRICULUM) + _ELECTIVES_REQUIRED + _SEMINAR_REQUIRED
+        completion_pct = round(
+            min(progress["credits_earned"] / _PROGRAM_CREDITS_REQUIRED, 1.0) * 100
         )
-        total_passed = passed_mandatory + passed_electives + passed_seminars
-        completion_pct = round((total_passed / total_needed) * 100) if total_needed else 0
 
         summary: dict = {
             "passed_mandatory": passed_mandatory,
             "total_mandatory": len(MANDATORY_CURRICULUM),
             "passed_electives": passed_electives,
-            "electives_needed": _ELECTIVES_REQUIRED,
+            "electives_needed": progress["electives_needed"],
             "passed_seminars": passed_seminars,
-            "seminars_needed": _SEMINAR_REQUIRED,
+            "seminars_needed": progress["seminars_needed"],
+            "passed_generals": progress["passed_generals"],
+            "generals_needed": progress["generals_needed"],
+            "credits_earned": progress["credits_earned"],
+            "credits_required": progress["credits_required"],
             "completion_pct": completion_pct,
         }
 

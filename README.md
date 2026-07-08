@@ -7,6 +7,10 @@ live industry demand.
 > **Architecture & design:** see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 > for the system design, recommendation algorithm, authentication/RBAC, data
 > model, and testing.
+>
+> **Project Book:** see [docs/AfekAdvisor - Final Project Book.pdf](docs/AfekAdvisor%20-%20Final%20Project%20Book.pdf)
+> for the full academic write-up (background, planning, architecture,
+> algorithms, testing, and conclusions).
 
 ## Screenshots
 
